@@ -1,0 +1,91 @@
+# ============================================================
+# CoW G-PINN default configuration
+# ============================================================
+
+topology:
+  n_segments: 11                 # ACA-A1 L/R, MCA L/R, PCA-P1 L/R, ICA L/R, BA, ACoA, PCoA L/R (see network_topology.py)
+  optional_segments: [ACoA, PCoA_L, PCoA_R]   # segments that can be "missing" (diameter -> 0)
+
+# PERFORMANCE NOTE: the bundled local_fd solver is pure-Python/NumPy, explicit-timestepped,
+# and CFL-constrained — at this profile's resolution it runs ~450s/patient (measured), so
+# the full 1000-patient sweep is a ~5-day job, not a laptop-in-an-afternoon job. Options,
+# in order of effort: (1) run `configs/demo.yaml` (below) for a fast ~20-patient sanity
+# dataset; (2) parallelize across patients with multiprocessing (embarrassingly parallel —
+# each patient is independent); (3) JIT the Segment1D.step inner loop with numba;
+# (4) swap in SimVascular/OpenCOR, which use compiled solvers and will be faster per-patient
+# despite being a heavier dependency to set up.
+sweep:
+  n_simulations: 1000
+  n_validation_holdout: 200      # Phase 4.1 unseen patients
+  stiffness_E_range_Pa: [4.0e+5, 2.0e+6]     # young/elastic -> aged/calcified
+  missing_vessel_prob: 0.35      # probability any single optional segment is absent
+  cardiac_cycle_s: 0.8
+  n_cycles_simulated: 4          # discard first cycles as transient, keep last
+  inlet_waveform: "physiological_ICA"      # see generate_synthetic.py for the parametric pulse shape
+  spatial_points_per_segment: 20
+  time_points_per_cycle: 100
+  random_seed: 42
+
+solver:
+  type: "local_fd"               # "local_fd" (bundled) or "simvascular" (external, stub)
+  dt_s: 1.0e-4
+  blood_density_kg_m3: 1060.0
+  blood_dynamic_viscosity_pa_s: 3.5e-3   # ~3.5 cP, typical blood viscosity
+  friction_coefficient: 22.0      # dimensionless Poiseuille-profile coefficient (Olufsen et al.
+                                   # 2000 use -2*(xi+2)*pi with xi=9 -> ~22); friction term is
+                                   # friction_coefficient * (mu/rho) * Q / A, NOT a bare Q term
+  wall_thickness_ratio: 0.1       # h / r0 used in the tube law
+
+model:
+  hidden_dim: 128
+  n_hidden_layers: 6
+  activation: "sine"              # SIREN-style, good for PINNs with high-freq pulsatile signals
+  siren_omega_0: 30.0
+  graph_encoder_hidden_dim: 64
+  graph_encoder_out_dim: 32       # conditioning embedding size fed into main trunk
+  output_scales:                  # see models/gpinn.py docstring — critical for training to
+                                   # converge at all, not cosmetic. A/Q are scaled per-point
+                                   # relative to that segment's own geometry (not a fixed
+                                   # global constant), since CoW vessel area spans ~10x across
+                                   # segments (ACoA/PCoA vs ICA). P_pa sized from the Phase 1
+                                   # synthetic_demo.h5 data (P up to ~8.3 kPa) — re-measure if
+                                   # you change vessel geometry ranges or the stiffness sweep.
+    area_ratio_scale: 0.4          # A/A0_local ranges over (area_ratio_min, area_ratio_min+area_ratio_scale)
+    area_ratio_min: 0.8
+    velocity_scale_ms: 0.3         # typical mean cerebral arterial velocity, used to derive Q0_local = A0_local * v
+    flow_ratio_scale: 3.0          # Q ranges over roughly (-3, 3) * Q0_local, covering systolic peaks
+  wall_thickness_ratio: 0.1        # MUST match solver.wall_thickness_ratio above — P is now
+                                    # computed analytically from A using this same tube law
+                                    # (see models/gpinn.py forward() docstring), so a mismatch
+                                    # here silently makes the model's P wrong even if A is correct
+
+loss_weights:
+  data: 3.0        # self-adaptive weighting was tried and empirically failed: log_var for
+                   # 'data' got driven up early (when momentum/junction raw magnitude was
+                   # huge, ~1e8) to compensate for scale, then never recovered even after
+                   # raw magnitudes became comparable later in training — result was A/P
+                   # collapsing to a near-constant (steady-state) solution that trivially
+                   # satisfies physics residuals while ignoring the real pulsatile target.
+                   # Fixed weights favoring data fit avoid this failure mode.
+  mass: 1.0
+  momentum: 1.0
+  boundary: 1.0
+  junction: 1.0
+  self_adaptive: false
+
+training:
+  batch_size_collocation: 4096
+  batch_size_data: 512
+  adam_epochs: 50000
+  total_adam_epochs: 50000        # cumulative budget across all resumes — MUST match if you
+                                    # chain resumed calls to reach this total; see
+                                    # training/train.py's scheduler mismatch-detection warning
+  adam_lr: 1.0e-3
+  lbfgs_max_iter: 5000
+  lbfgs_history_size: 50
+  checkpoint_every: 2000
+  device: "cuda"                  # falls back to "cpu" automatically if unavailable
+
+validation:
+  mape_target_percent: 5.0
+  cfd_reference_time_s: null      # fill in after benchmarking your local solver

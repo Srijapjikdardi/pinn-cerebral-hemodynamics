@@ -1,0 +1,10 @@
+torch>=2.1
+numpy>=1.24
+h5py>=3.9
+pyyaml>=6.0
+tqdm>=4.66
+# matplotlib is NOT imported anywhere in the core codebase — only needed if you want to
+# regenerate plots like outputs/loss_curves_60patient.png from a loss_history.csv yourself:
+matplotlib>=3.7
+# optional, only needed if you upgrade the conditioning encoder to a real GNN:
+# torch-geometric

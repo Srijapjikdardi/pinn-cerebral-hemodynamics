@@ -1,0 +1,71 @@
+# Demo-scale sweep: same physics, same solver, drastically fewer patients / lower
+# spatial resolution / fewer cardiac cycles so it finishes in a couple of minutes
+# instead of days. Use this to sanity-check the pipeline end-to-end; switch back to
+# default.yaml (or your own higher-res config) for a publication-quality dataset.
+
+topology:
+  n_segments: 11
+  optional_segments: [ACoA, PCoA_L, PCoA_R]
+
+sweep:
+  n_simulations: 20
+  n_validation_holdout: 5
+  stiffness_E_range_Pa: [4.0e+5, 2.0e+6]
+  missing_vessel_prob: 0.35
+  cardiac_cycle_s: 0.8
+  n_cycles_simulated: 1            # was 4 — no discarded transient cycle (demo only; use
+                                    # >=2 for real data so the first-cycle transient is dropped)
+  inlet_waveform: "physiological_ICA"
+  spatial_points_per_segment: 6    # was 20 — coarser mesh, bigger CFL-stable dt
+  time_points_per_cycle: 50        # was 100 — fewer saved samples/cycle
+  random_seed: 42
+
+solver:
+  type: "local_fd"
+  dt_s: 1.0e-4                     # ceiling only — actual dt is CFL-selected, usually smaller
+  blood_density_kg_m3: 1060.0
+  blood_dynamic_viscosity_pa_s: 3.5e-3
+  friction_coefficient: 22.0
+  wall_thickness_ratio: 0.1
+
+model:
+  hidden_dim: 128
+  n_hidden_layers: 6
+  activation: "sine"
+  siren_omega_0: 30.0
+  graph_encoder_hidden_dim: 64
+  graph_encoder_out_dim: 32
+  output_scales:
+    area_ratio_scale: 0.4
+    area_ratio_min: 0.8
+    velocity_scale_ms: 0.3
+    flow_ratio_scale: 3.0
+  wall_thickness_ratio: 0.1        # MUST match solver.wall_thickness_ratio above (see
+                                    # models/gpinn.py forward() docstring — P is analytic now)
+
+loss_weights:
+  data: 3.0
+  mass: 1.0
+  momentum: 1.0
+  boundary: 1.0
+  junction: 1.0
+  self_adaptive: false
+
+training:
+  batch_size_collocation: 512     # was 4096 (production scale) — never actually reduced for
+                                    # "demo" purposes until now; every demo run this session used
+                                    # one-off in-memory config overrides, not this shipped file
+  batch_size_data: 128
+  adam_epochs: 3000
+  total_adam_epochs: 3000         # cumulative budget — see training/train.py's mismatch warning
+                                    # if you chain resumed calls past this
+  adam_lr: 1.0e-3
+  lbfgs_max_iter: 200
+  lbfgs_history_size: 50
+  checkpoint_every: 1000
+  device: "cpu"                   # demo config assumes no GPU; falls back automatically anyway,
+                                    # but this avoids confusion if CUDA happens to be present
+
+validation:
+  mape_target_percent: 5.0
+  cfd_reference_time_s: null
