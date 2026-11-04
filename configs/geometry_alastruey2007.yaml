@@ -1,0 +1,49 @@
+# Circle of Willis geometry and parameters for physics/cow_network.py.
+# source "T1" = Alastruey et al., J Biomech 40:1794 (2007), Table 1 (re-keyed by hand; verify against the PDF).
+# source "T2" = same paper, Table 2 (normal-case mean outflows).
+# source "A"  = ASSUMPTION made here, not taken from the paper. Each A item is a decision to revisit.
+# Units in this file: cm for length and radius, cm for wall thickness h, 1e6 Pa for E; converted to SI on load.
+constants:
+  rho_kg_m3: 1050.0        # T1/text
+  mu_mPa_s: 4.5            # T1/text
+  sigma: 0.5               # text (incompressible wall)
+  venous_pressure_mmHg: 5  # text
+  p_init_mmHg: 90          # A: initial uniform gauge pressure, mean arterial pressure guess
+  period_s: 0.8            # A: heart rate 75 bpm, not stated for the head model
+  friction: "8*pi*mu/rho"  # text: f = -2 pi mu U (Smith 2001) => K_R = 8 pi mu / rho
+vessels:                   # length_cm, radius_cm, h_cm, E_1e6Pa (all T1), source rows named after the paper
+  ICA_L: {length_cm: 0.5,  r_cm: 0.200, h_cm: 0.050, E: 1.6, row: "int. carotid II"}   # A: ICA I (17.7 cm) dropped, inflow at ICA II inlet
+  ICA_R: {length_cm: 0.5,  r_cm: 0.200, h_cm: 0.050, E: 1.6, row: "int. carotid II"}
+  MCA_L: {length_cm: 11.9, r_cm: 0.143, h_cm: 0.036, E: 1.6, row: "MCA", R_total_1e9: 5.97,  C_1e-10: 1.16}
+  MCA_R: {length_cm: 11.9, r_cm: 0.143, h_cm: 0.036, E: 1.6, row: "MCA", R_total_1e9: 5.97,  C_1e-10: 1.16}
+  A1_L:  {length_cm: 1.2,  r_cm: 0.117, h_cm: 0.029, E: 1.6, row: "A1"}
+  A1_R:  {length_cm: 1.2,  r_cm: 0.117, h_cm: 0.029, E: 1.6, row: "A1"}
+  A2_L:  {length_cm: 10.3, r_cm: 0.120, h_cm: 0.030, E: 1.6, row: "A2", R_total_1e9: 8.48,  C_1e-10: 0.82}
+  A2_R:  {length_cm: 10.3, r_cm: 0.120, h_cm: 0.030, E: 1.6, row: "A2", R_total_1e9: 8.48,  C_1e-10: 0.82}
+  ACoA:  {length_cm: 0.3,  r_cm: 0.074, h_cm: 0.019, E: 1.6, row: "ACoA"}
+  PCoA_L: {length_cm: 1.5, r_cm: 0.073, h_cm: 0.018, E: 1.6, row: "PCoA"}
+  PCoA_R: {length_cm: 1.5, r_cm: 0.073, h_cm: 0.018, E: 1.6, row: "PCoA"}
+  BA:    {length_cm: 2.9,  r_cm: 0.162, h_cm: 0.040, E: 1.6, row: "basilar"}   # A: single segment, inflow at its inlet
+  P1_L:  {length_cm: 0.5,  r_cm: 0.107, h_cm: 0.027, E: 1.6, row: "P1"}
+  P1_R:  {length_cm: 0.5,  r_cm: 0.107, h_cm: 0.027, E: 1.6, row: "P1"}
+  P2_L:  {length_cm: 8.6,  r_cm: 0.105, h_cm: 0.026, E: 1.6, row: "P2", R_total_1e9: 11.08, C_1e-10: 0.62}
+  P2_R:  {length_cm: 8.6,  r_cm: 0.105, h_cm: 0.026, E: 1.6, row: "P2", R_total_1e9: 11.08, C_1e-10: 0.62}
+# Terminal Windkessel: R1 = Z0 = rho c0 / A0 (characteristic impedance), R2 = R_total - R1, C as above (T1).
+inflow:
+  # A: head inflow is not given in the paper. Mean flows chosen so that a complete network delivers about the
+  #    Table 2 mean outflows: MCA 1.73, ACA 1.16, PCA 0.90 mL/s per side.
+  ICA_mean_mL_s: 2.89      # A: = MCA 1.73 + ACA 1.16 (T2)
+  BA_mean_mL_s: 1.80       # A: = 2 x PCA 0.90 (T2)
+  waveform: "A: generic positive pulse, systolic gaussian peak at 0.15 s (width 0.07 s) on a 0.35 baseline, normalised to unit mean"
+topology:
+  nodes:
+    ICA_L_node: [[ICA_L, 1], [MCA_L, 0], [A1_L, 0], [PCoA_L, 0]]
+    ICA_R_node: [[ICA_R, 1], [MCA_R, 0], [A1_R, 0], [PCoA_R, 0]]
+    ACA_L_node: [[A1_L, 1], [ACoA, 0], [A2_L, 0]]
+    ACA_R_node: [[A1_R, 1], [ACoA, 1], [A2_R, 0]]
+    BA_node:    [[BA, 1], [P1_L, 0], [P1_R, 0]]
+    PCA_L_node: [[P1_L, 1], [PCoA_L, 1], [P2_L, 0]]
+    PCA_R_node: [[P1_R, 1], [PCoA_R, 1], [P2_R, 0]]
+  inlets: [ICA_L, ICA_R, BA]       # left end (x=0)
+  outlets: [MCA_L, MCA_R, A2_L, A2_R, P2_L, P2_R]   # right end (x=L)
+variable_vessels: [ACoA, PCoA_L, PCoA_R, A1_L, A1_R, P1_L, P1_R]
