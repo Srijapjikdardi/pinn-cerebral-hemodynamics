@@ -107,3 +107,17 @@ methods, Yuhn 2022 beyond its methods, NeuroForge section 7, one candidate (arXi
 Open decision: rewrite in-repo (Python, vectorised or numba; Colab-friendly, full control) versus
 adopt an existing validated 1D solver. Default is the in-repo rewrite unless you prefer otherwise.
 Effort estimate 2-4 weeks including verification; uncertain.
+
+## Update 2026-11-05: verified solver timing
+
+`physics/solver_1d.py` + `physics/cow_network.py` (commit 95f25ac); `scripts/gate0/time_cow.py`. Full 15-vessel CoW,
+periodic state (5 cycles, tol 1e-5), this container (2 cores), numba, n=3 after JIT warm-up:
+
+| dx | cells | wall |
+| --- | --- | --- |
+| 2 mm | 367 | 3.4 s |
+| 1 mm | 722 | 5.2 s |
+
+Max Courant 0.68. Not yet verified: mesh convergence on the full network, Boileau 2015 benchmark. Per the plan's
+framing rule, 3-5 s is "seconds: reliability study, no solver-speed claim"; a PINN forward pass (ms) still gives a
+speed gap, so the fallback-cost argument depends on surrogate latency, to be measured once torch is installed.
