@@ -235,3 +235,29 @@ this also stands for pressure. Findings:
 - Ensemble spread is at or below chance on `variant` (0.46-0.49): not a usable signal for held-out topologies of this size.
 - Claim supported so far: physics-based junction-mass and inlet-flow signals predict flow-error under topology shift
   (AUROC 0.73-0.92); evidence for pressure/area error is weaker (0.53-0.75). Do not generalise beyond one surrogate family.
+
+## Update 2026-11-06: solver-fallback policy (first cost-accuracy results)
+
+`reliability/fallback.py`. Policy: surrogate always runs; a case is sent to the verified solver when its score exceeds a
+threshold calibrated on validation (in-distribution) only. Deferred cases get error 0 by construction (dataset solver
+output is the ground truth), so this evaluates the policy, not the solver. Costs: solver 2.49 s/case (dataset `wall_s`,
+2 parallel workers; 4.6 s single-process at 2 mm), 5-member surrogate 9-12 ms, signals 4 ms: speed ratio 150-190x.
+
+Variant split, held-out topologies (n = 386), mean err_Q: surrogate only 0.093; deferring the top 30% by score gives 0.058 (S1),
+0.058 (S4), 0.059 (fused) vs random 0.065 and oracle 0.049; at 50%: 0.038 / 0.041 / 0.041 vs random 0.046, oracle 0.031.
+Val-calibrated threshold (q = 0.80): deferral rises from 0.20 on test_id to 0.44 on held-out topologies and the error
+reduction is 54% (S1) against 44% for random deferral at the same rate.
+Complexity split (n = 599): a val-calibrated threshold defers 82-98% of held-out cases (vs 3-27% in distribution) and cuts
+error 88-99%, but random deferral at the same rate cuts 82-98%, so almost all of that reduction is volume.
+
+Reading:
+- The checker's clearest practical value is automatic shift detection: deferral climbs by 2-30x from in-distribution to
+  held-out topologies without ever seeing them.
+- The gain over random deferral is real but modest: roughly 5-10 points of error reduction on `variant`, 3-6 points on
+  `complexity` at val-calibrated operating points. Oracle headroom is about twice that.
+- With a solver at 2.5 s, deferring most cases costs about as much as always running it (2.4 s/case at 97% deferral). The
+  efficiency claim (surrogate saves compute) holds only for in-distribution traffic. Under strong shift the result is a
+  safety mechanism, not a speed-up. Frame the paper around reliability, not speed.
+- Deferred error is 0 only because the dataset solver defines truth; real fallback inherits solver error (0.6-1.3% in
+  the Boileau single-pulse test at 2 mm).
+- Only err_Q; fused score fit on val with a Q label; no conformal guarantee (exchangeability fails under topology shift).
