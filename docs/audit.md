@@ -121,3 +121,17 @@ periodic state (5 cycles, tol 1e-5), this container (2 cores), numba, n=3 after 
 Max Courant 0.68. Not yet verified: mesh convergence on the full network, Boileau 2015 benchmark. Per the plan's
 framing rule, 3-5 s is "seconds: reliability study, no solver-speed claim"; a PINN forward pass (ms) still gives a
 speed gap, so the fallback-cost argument depends on surrogate latency, to be measured once torch is installed.
+
+Mesh convergence, full CoW, periodic state (tol 1e-6, 7 cycles each), mid-vessel, worst vessel, vs dx = 0.5 mm
+(`scripts/gate0/cow_mesh_study.py`; Q error denominator floored at 1% of the largest vessel because symmetric ACoA Q is ~0):
+
+| dx | Pmax diff | P rel L2 | Q rel L2 (worst: PCoA_L) | wall |
+| --- | --- | --- | --- | --- |
+| 4 mm | 0.005% | 0.027% | 0.15% | 3.5 s |
+| 2 mm | 0.001% | 0.019% | 0.29% | 4.6 s |
+| 1 mm | 0.001% | 0.006% | 0.14% | 6.7 s |
+| 0.5 mm (ref) | - | - | - | 22.8 s |
+
+Reference is the finest grid, not an exact solution, so this shows grid-independence at 4 mm, not accuracy. The small
+Q errors in PCoA_L do not fall monotonically (small-flow vessel, few cells). Use dx = 2 mm for dataset generation
+(about 4.6 s); revisit for hypoplastic variants.
