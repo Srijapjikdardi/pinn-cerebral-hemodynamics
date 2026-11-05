@@ -519,9 +519,8 @@ def build_network(vessels, nodes, inlets, outlets, rho=1050.0, mu=4.5e-3, sigma=
         z0 = rho * c0[v] / A0[v]
         if "R_total" in spec:
             R1[k] = z0
-            R2[k] = spec["R_total"] - z0
-            if R2[k] <= 0:
-                raise ValueError(f"terminal R_total of {vn} is below its characteristic impedance")
+            # R_total below Z0 would make R2 <= 0 (perturbed small stiff vessels): floor R2 at 0.2 Z0
+            R2[k] = max(spec["R_total"] - z0, 0.2 * z0)
         else:
             R1[k] = spec["R1"]
             R2[k] = spec["R2"]
