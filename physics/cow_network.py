@@ -13,6 +13,7 @@ from physics.solver_1d import build_network
 
 CONFIG = Path(__file__).resolve().parents[1] / "configs" / "geometry_alastruey2007.yaml"
 MMHG = 133.322
+PULSATILITY = 0.5
 
 
 def load_geometry(path=CONFIG):
@@ -23,7 +24,8 @@ def load_geometry(path=CONFIG):
 def inflow_waveform(n=400):
     t = np.arange(n) / n * 0.8
     w = 0.35 + np.exp(-0.5 * ((t - 0.15) / 0.07) ** 2)
-    return w / w.mean()
+    w = w / w.mean()
+    return 1.0 + PULSATILITY * (w - 1.0)  # peak/mean 1.69 at 0.5 (A: cerebral inflow is damped vs. the raw pulse)
 
 
 def reachable_vessels(geo, absent):
@@ -43,8 +45,11 @@ def reachable_vessels(geo, absent):
     return reach, nodes
 
 
-def build_cow(absent=(), geo=None, dx_target=1.0e-3, hypo=None):
-    """absent: iterable of vessel names to remove. hypo: {name: radius_scale}. Returns (net, info)."""
+def build_cow(absent=(), geo=None, dx_target=1.0e-3, hypo=None, E_scale=None, inflow_scale=None,
+              R_scale=1.0, period=None):
+    """absent: vessel names to remove. hypo: {name: radius_scale} (h scales with r).
+    E_scale: {name: factor}. inflow_scale: {inlet name: factor}. R_scale: terminal R_total factor.
+    period: cardiac period in s (default from config). Returns (net, info)."""
     geo = geo or load_geometry()
     absent = tuple(absent)
     for a in absent:
@@ -58,7 +63,7 @@ def build_cow(absent=(), geo=None, dx_target=1.0e-3, hypo=None):
         g = geo["vessels"][n]
         s = (hypo or {}).get(n, 1.0)
         vessels.append(dict(name=n, L=g["length_cm"] * 1e-2, r0=g["r_cm"] * 1e-2 * s,
-                            h=g["h_cm"] * 1e-2 * s, E=g["E"] * 1e6))
+                            h=g["h_cm"] * 1e-2 * s, E=g["E"] * 1e6 * (E_scale or {}).get(n, 1.0)))
     nodes2 = []
     for nd in nodes:
         nd = [(v, e) for v, e in nd if v in keep]
@@ -68,15 +73,17 @@ def build_cow(absent=(), geo=None, dx_target=1.0e-3, hypo=None):
             raise ValueError(f"dead end: vessel end {nd[0]} would be unterminated")
     inlets_cfg = [v for v in geo["topology"]["inlets"] if v in keep]
     mean = {"ICA": geo["inflow"]["ICA_mean_mL_s"], "BA": geo["inflow"]["BA_mean_mL_s"]}
-    inlets = {v: (mean["BA"] if v == "BA" else mean["ICA"]) * 1e-6 for v in inlets_cfg}
+    inlets = {v: (mean["BA"] if v == "BA" else mean["ICA"]) * 1e-6 * (inflow_scale or {}).get(v, 1.0)
+              for v in inlets_cfg}
     outlets = {}
     for v in geo["topology"]["outlets"]:
         if v in keep:
             g = geo["vessels"][v]
-            outlets[v] = dict(R_total=g["R_total_1e9"] * 1e9, C=g["C_1e-10"] * 1e-10)
+            outlets[v] = dict(R_total=g["R_total_1e9"] * 1e9 * R_scale, C=g["C_1e-10"] * 1e-10)
     # adjust R_total of hypoplastic outlets is not modelled; Z0 check happens in build_network
     net = build_network(vessels, nodes2, inlets, outlets, rho=c["rho_kg_m3"], mu=c["mu_mPa_s"] * 1e-3,
                         sigma=c["sigma"], pv=c["venous_pressure_mmHg"] * MMHG, dx_target=dx_target,
-                        wtab=inflow_waveform(), period=c["period_s"])
-    info = dict(absent=absent, vessels=names, p_init=c["p_init_mmHg"] * MMHG, period=c["period_s"])
+                        wtab=inflow_waveform(), period=period or c["period_s"])
+    info = dict(absent=absent, vessels=names, p_init=c["p_init_mmHg"] * MMHG, period=period or c["period_s"],
+                n_pruned=len(geo["vessels"]) - len(names) - len(absent))
     return net, info

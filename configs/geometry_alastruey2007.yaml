@@ -34,7 +34,7 @@ inflow:
   #    Table 2 mean outflows: MCA 1.73, ACA 1.16, PCA 0.90 mL/s per side.
   ICA_mean_mL_s: 2.89      # A: = MCA 1.73 + ACA 1.16 (T2)
   BA_mean_mL_s: 1.80       # A: = 2 x PCA 0.90 (T2)
-  waveform: "A: generic positive pulse, systolic gaussian peak at 0.15 s (width 0.07 s) on a 0.35 baseline, normalised to unit mean"
+  waveform: "A: generic positive pulse, systolic gaussian peak at 0.15 s (width 0.07 s) on a 0.35 baseline, normalised to unit mean, then amplitude of the pulsatile part scaled by 0.5 (peak/mean 1.69; PULSATILITY in physics/cow_network.py). Raw pulse (peak/mean 2.39) gave 63-138 mmHg in the full network; 0.5 gives 74-112"
 topology:
   nodes:
     ICA_L_node: [[ICA_L, 1], [MCA_L, 0], [A1_L, 0], [PCoA_L, 0]]
