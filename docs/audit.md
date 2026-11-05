@@ -261,3 +261,48 @@ Reading:
 - Deferred error is 0 only because the dataset solver defines truth; real fallback inherits solver error (0.6-1.3% in
   the Boileau single-pulse test at 2 mm).
 - Only err_Q; fused score fit on val with a Q label; no conformal guarantee (exchangeability fails under topology shift).
+
+## Update 2026-11-06: Boileau 2015 benchmark 5 (37-artery network) verified
+
+Data: the paper's supplementary zip for benchmark 5 (supplied by you): `mesh.txt` (geometry, PWV, terminal R), `inflow.txt`,
+`ExpData` (in vitro pressure and flow at 8 sites, Matthys et al. 2007), `NumData` (six codes: DCG, LCG, FEM, FVM, McC, STM).
+Third-party data is gitignored (`data/boileau37/`). Code: `scripts/gate0/boileau37_run.py`, `boileau37_compare.py`.
+Setup from the supplement and Matthys 2007: rho 1050, mu 2.5 mPa s, E from supplied PWV via our tube law (gives 1.2 MPa,
+Matthys' measured value), terminals single resistors R1 (mesh col 10 x 1e9; parallel resistance 2.248e8 Pa s/m3 = Matthys'
+total peripheral resistance), p_out = 3.2 mmHg (Matthys), inflow from `inflow.txt` (mean 52.0 ml/s). Tapered segments are
+chains of uniform sub-vessels (<= 1 cm). Run to periodic state (about 17 cycles), last cycle compared at the paper's time windows.
+Site-to-segment mapping is not in the supplement; inferred by matching to the six-scheme mean (not to in vitro data;
+best-match margins 0.07-0.21 vs next-best 0.11-0.49): AorticArchII 10, ThoracicAortaII 17, LSubclavianI 11, RIliacFemoralII 29,
+LUlnar 14, RAnteriorTibial 34, RUlnar 7, Splenic 20, evaluated at segment midpoints. Not independently confirmed.
+
+Findings (relative RMS over the cycle, normalised by RMS of the reference):
+- Flow split is right from the start: mean flow in segment 10 is 37.2 ml/s vs 36.95 (FVM).
+- Harness bug found and fixed during this work: terminal-capacitor state initialised at 12 kPa instead of p_out doubled mean pressure.
+- With K_R = 8 pi mu / rho (parabolic profile) the pressure error vs in vitro is 2.0-6.5% vs 1.7-3.7% for the six codes;
+  distal flow error up to 49% vs 41%. Mesh refinement (dx 2 -> 1 mm, sub-vessel 1 -> 0.5 cm) changes nothing (<=3 points), so
+  the gap is model, not discretisation.
+- Setting friction to the paper's velocity-profile parameter zeta = 9 (2 pi mu zeta^2/(zeta-1) = 2.53 x 8 pi mu, chosen from the
+  paper's stated zeta for the aorta cases before running, not fitted) closes the gap:
+
+| site | P error vs in vitro (ours / six-code mean) | Q error vs in vitro (ours / six-code mean) | ours vs six-code mean, P / Q |
+| --- | --- | --- | --- |
+| AorticArchII | 1.6% / 1.7% | 28.3% / 28.2% | 0.4% / 1.1% |
+| ThoracicAortaII | 1.9% / 2.1% | 55.3% / 57.6% | 0.4% / 2.6% |
+| LSubclavianI | 3.4% / 3.2% | 29.8% / 30.2% | 0.4% / 1.6% |
+| RIliacFemoralII | 4.1% / 3.7% | 40.7% / 41.2% | 0.4% / 2.3% |
+| LUlnar | 2.7% / 2.6% | 15.1% / 15.3% | 0.3% / 2.0% |
+| RAnteriorTibial | 3.3% / 3.4% | 15.3% / 14.5% | 0.6% / 1.9% |
+| RUlnar | 2.7% / 2.6% | 14.1% / 14.2% | 0.3% / 0.9% |
+| Splenic | 2.5% / 2.3% | 13.2% / 12.8% | 0.4% / 1.3% |
+
+Our solution sits within 0.3-0.6% (P) and 0.9-2.6% (Q) of the six-code mean; the six codes agree with each other to
+0.1-0.4% (P) and 0.9-2.0% (Q). Large flow errors against the in vitro data (up to 55%) are shared by all codes, so they reflect
+the experiment (flow-probe measurement and model idealisation), not this solver.
+
+Consequences:
+- Gate 0 solver verification now includes a published multi-vessel benchmark with in vitro data, at near-parity with the six
+  reference codes. State it as: "reproduces benchmark 5 of Boileau et al. 2015 to within about 2x the spread among the six
+  reference codes". Cases 2-4 (3-D reference) remain unchecked.
+- IMPORTANT: the CoW dataset uses K_R = 8 pi mu / rho (parabolic) with mu = 4.5 mPa s following Alastruey 2007's Smith 2001
+  closure; the benchmark suggests zeta = 9 is the common closure for 1D codes. This choice changes pressure by a few percent
+  and flow by more. Decide deliberately; if the paper claims a physiologically faithful solver, document the closure and test sensitivity.
