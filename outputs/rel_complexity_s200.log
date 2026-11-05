@@ -1,0 +1,6 @@
+member 0 best val relL2 0.1351
+member 1 best val relL2 0.1421
+member 2 best val relL2 0.1340
+member 3 best val relL2 0.1405
+member 4 best val relL2 0.1432
+saved outputs/rel_complexity_s200.npz

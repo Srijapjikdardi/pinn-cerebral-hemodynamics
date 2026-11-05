@@ -209,3 +209,29 @@ not a solver error; so the linear reference sets a floor of about that size and 
 The viscous variant is not tested: our friction closure (K_R = 8 pi mu / rho, Smith 2001) differs from the paper's
 profile-dependent term (zeta = 9), so a pass or fail there would test the closure choice, not the solver.
 Status: Gate 0 solver verification is analytic limits plus one published benchmark case, not the full benchmark.
+
+## Update 2026-11-06: robustness of the reliability results
+
+`reliability/robustness.py`; two independent 5-member ensembles per split (seed bases 100, 200; same data and split).
+AUROC within held-out topologies, mean over the two ensembles (spread between ensembles <= 0.03 for every entry).
+Bootstrap 95% CIs (first ensemble, resampling test samples; optimistic because samples within a topology are correlated).
+
+| signal | variant, Q label | variant, A label | complexity, Q label | complexity, A label |
+| --- | --- | --- | --- | --- |
+| S1 junction mass | 0.74 | 0.75 | 0.90 | 0.66 |
+| S2 junction pressure | 0.60 | 0.56 | 0.65 | 0.53 |
+| S3 PDE residual | 0.64 | 0.53 | 0.69 | 0.63 |
+| S4 inlet mismatch | 0.73 | 0.71 | 0.92 | 0.61 |
+| S5 ensemble spread | 0.49 | 0.46 | 0.74 | 0.65 |
+| S6 input distance | 0.63 | 0.58 | 0.64 | 0.61 |
+
+"A label" = area error above the validation 90th percentile; pressure is a monotone function of area in this model, so
+this also stands for pressure. Findings:
+- Results are stable across ensembles; the earlier numbers were not seed luck (at n = 2 ensembles).
+- On `variant`, S1 and S4 hold up under the A label (0.75, 0.71). On `complexity` they fall (0.66, 0.61): their large
+  advantage there is specific to Q error. Under the A label on `complexity` no signal exceeds 0.66.
+- S2 (junction total pressure) is weak under every label (0.53-0.65), including the A label, which is the quantity it is built from.
+- S3 on `variant` with the A label is at chance (0.53, CI includes 0.5).
+- Ensemble spread is at or below chance on `variant` (0.46-0.49): not a usable signal for held-out topologies of this size.
+- Claim supported so far: physics-based junction-mass and inlet-flow signals predict flow-error under topology shift
+  (AUROC 0.73-0.92); evidence for pressure/area error is weaker (0.53-0.75). Do not generalise beyond one surrogate family.

@@ -22,6 +22,7 @@ def main():
     ap.add_argument("--split", required=True)
     ap.add_argument("--members", type=int, default=5)
     ap.add_argument("--epochs", type=int, default=100)
+    ap.add_argument("--seed-base", type=int, default=100)
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     X, Y, M, meta = load(a.data)
@@ -32,7 +33,7 @@ def main():
     s1 = torch.zeros_like(Yt)
     s2 = torch.zeros_like(Yt)
     for k in range(a.members):
-        _, best, pred = fit(Xt, Yt, Mt, sp, 100 + k, a.epochs, 256, 4)
+        _, best, pred = fit(Xt, Yt, Mt, sp, a.seed_base + k, a.epochs, 256, 4)
         print(f"member {k} best val relL2 {best:.4f}", flush=True)
         s1 += pred
         s2 += pred ** 2
