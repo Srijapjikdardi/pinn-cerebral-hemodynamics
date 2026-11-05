@@ -156,3 +156,36 @@ Reading: held-out topologies cost about 3 points (7.2 -> 10.0%); extrapolating t
 about 11 points (11.4 -> 22.4%). The surrogate degrades under topology shift but not catastrophically, so the reliability signal has
 to separate a modest error increase, not a collapse. Two seeds only; no error bars yet. Not yet evaluated: any
 reliability signal (S1-S6), fallback, vessel-held-out splits.
+
+## Update 2026-11-05: first reliability-signal results (kill check passed)
+
+5-member data-only MLP ensemble per split (100 epochs, seeds 100-104), ensemble-mean prediction. Label "bad" = err_Q above
+the 90th percentile of validation (in-distribution) err_Q. AUROC within the held-out-topology subset (`test_ood`);
+code: `reliability/signals.py`, `training/reliability_eval.py`, `reliability/metrics.py`; tables in `outputs/rel_*.npz`.
+
+| signal | variant test_ood | complexity test_ood |
+| --- | --- | --- |
+| S1 junction mass | 0.73 | 0.90 |
+| S2 junction total-pressure mismatch | 0.59 | 0.63 |
+| S3 PDE residual (finite differences) | 0.62 | 0.72 |
+| S4 inlet-flow mismatch | 0.70 | 0.91 |
+| S5 ensemble spread | 0.48 | 0.74 |
+| S6 input kNN distance | 0.61 | 0.64 |
+| fused (logistic, fit on val only) | 0.70 | 0.86 |
+
+AURC (mean err_Q of retained cases, coverages 10-100%), variant test_ood: random 0.093, oracle 0.065, best signal
+(fused) 0.078, so about half the random-to-oracle gap. Complexity test_ood: random 0.241, oracle 0.178, S4 0.185, S1 0.193.
+
+Reading:
+- Kill criterion (best AUROC near 0.5 under topology shift) is not triggered: physics signals carry real information.
+- Ensemble spread is uninformative for held-out topologies in `variant` (0.48): members share data and inductive bias and fail together. It helps only in `complexity` (0.74), where the extrapolation is large. S6 (input distance) is weak in both.
+- S1 and S4 dominate. Caution: S4 compares the predicted inlet flow with the prescribed inflow, so it is close to a direct
+  error measurement on one boundary of the same quantity (Q) the label is built from. It is legitimate at deployment
+  (inflow is a known input) but should not be sold as an independent physics check. S1 is likewise Q-based. The label uses
+  Q only; repeat with an A- or P-based label before claiming generality.
+- Residual floor on exact solver output: S1 1.6e-4, S2 7.5e-4, S4 3.0e-4, S3 0.245 (S3 is high even on truth because grid-point
+  finite differences on a 21-point grid are coarse; it separates predictions, whose median is about 1.0, but its absolute
+  value is not interpretable). Predicted medians are 100-300x the floor for S1/S2/S4.
+- Limits: one dataset, one surrogate family, one seed set; thresholds from a single quantile; no confidence intervals;
+  pooled AUROC mixes distribution shift with error ranking, so the within-OOD numbers are the honest ones;
+  `physiological`-flagged cases not separated; no calibration or fallback yet.
