@@ -189,3 +189,23 @@ Reading:
 - Limits: one dataset, one surrogate family, one seed set; thresholds from a single quantile; no confidence intervals;
   pooled AUROC mixes distribution shift with error ranking, so the within-OOD numbers are the honest ones;
   `physiological`-flagged cases not separated; no calibration or fallback yet.
+
+## Update 2026-11-05: Boileau 2015, partial (case 1 only)
+
+Source read: Boileau et al., Int J Numer Meth Biomed Eng 31(10), e02732 (Swansea open-access PDF). Only the text up to Table V
+was readable, so Tables VI-XIII (bifurcation, 37-artery, ADAN56 geometry) were not available, and the paper's
+supplementary reference data (stated "publicly available online") was not located; no URL appears in the extracted text.
+Cases 2-4 (carotid, thoracic aorta, aortic bifurcation) compare against 3-D simulations that are not in hand. Case 5
+(37 silicone arteries) needs Table IX plus the in vitro data of Matthys et al. Not verified: any of these.
+
+Verified: case 1, single pulse in a 10 m reflection-free tube, inviscid (`tests/test_boileau_single_pulse.py`).
+Paper parameters used as given: A0 = pi cm^2, h = 1.5 mm, E = 400 kPa, rho = 1050, Qin = 1e-6 exp(-1e4 (t-0.05)^2).
+Our tube law constants coincide with the paper's (beta = (4/3) sqrt(pi) E h at sigma = 0.5), giving c0 = 6.17 m/s as reported.
+Result vs the linear solution Q(x,t) = Qin(t - x/c0), relative L2 of Q at 5 m / 9.7 m: dx = 2 mm 0.6% / 1.3%; peak
+ratio 1.000; pressure peak within 3% of Z0 Qmax. At dx = 4 mm 7% / 12% (diffusion, peak 0.97).
+At dx = 1 mm the error rises again (1.9% / 4.4%): the pulse arrives about 0.5 ms early, converging to that value under
+refinement. This is the nonlinear advection speed u + c(A) (u/c0 about 5e-4 at the peak), which the linear reference omits,
+not a solver error; so the linear reference sets a floor of about that size and this test cannot resolve finer.
+The viscous variant is not tested: our friction closure (K_R = 8 pi mu / rho, Smith 2001) differs from the paper's
+profile-dependent term (zeta = 9), so a pass or fail there would test the closure choice, not the solver.
+Status: Gate 0 solver verification is analytic limits plus one published benchmark case, not the full benchmark.
