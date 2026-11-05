@@ -135,3 +135,24 @@ Mesh convergence, full CoW, periodic state (tol 1e-6, 7 cycles each), mid-vessel
 Reference is the finest grid, not an exact solution, so this shows grid-independence at 4 mm, not accuracy. The small
 Q errors in PCoA_L do not fall monotonically (small-flow vessel, few cells). Use dx = 2 mm for dataset generation
 (about 4.6 s); revisit for hypoplastic variants.
+
+## Update 2026-11-05: dataset v1 and data-only baseline
+
+`data/cow_v1.h5` (seed 1, gitignored, 455 MB): 1500 samples, all 96 valid topologies (7-25 samples each), all converged,
+max Courant 0.73, median 6 cycles to periodic state. 1031 of 1500 (69%) pass the `physiological` flag
+(systolic <= 180 and diastolic >= 40 mmHg); systolic p90 218, p99 270 mmHg. Inflow scaling, pulsatility 0.5 and
+spreads are assumptions (see `data/generate_cow.py`, `configs/geometry_alastruey2007.yaml`).
+
+Baseline: data-only MLP (4 x 256, topology mask + physiology -> full A, Q fields), no physics loss
+(`training/train_surrogate.py`, 150 epochs, 2 seeds, model selection on val only). Mean relative L2, Q / A, per sample:
+
+| split | val | test_id | test_ood |
+| --- | --- | --- | --- |
+| random | 6.3% / 7.2% | 6.3% / 6.9% | - |
+| variant (25% of topologies held out) | 7.0% / 8.0% | 7.2% / 8.6% | 10.0% / 10.6% |
+| complexity (train <=2 absent, test >=4) | 11.3% / 14.0% | 11.4% / 13.9% | 22.4% / 21.2% |
+
+Reading: held-out topologies cost about 3 points (7.2 -> 10.0%); extrapolating to more absent vessels costs
+about 11 points (11.4 -> 22.4%). The surrogate degrades under topology shift but not catastrophically, so the reliability signal has
+to separate a modest error increase, not a collapse. Two seeds only; no error bars yet. Not yet evaluated: any
+reliability signal (S1-S6), fallback, vessel-held-out splits.
