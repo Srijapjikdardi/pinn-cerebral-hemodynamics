@@ -80,7 +80,8 @@ def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64):
         e = rel_l2(predict(idx) * ys, Y[idx], M[idx])
         return dict(n=len(idx), A_mean=e[:, 0].mean().item(), Q_mean=e[:, 1].mean().item(),
                     Q_p90=e[:, 1].quantile(0.9).item(), Q_median=e[:, 1].median().item())
-    return {k: evaluate(sp[k]) for k in ("val", "test_id", "test_ood")}, best
+    pred_all = torch.cat([predict(torch.arange(i, min(i + 128, len(X)))) * ys for i in range(0, len(X), 128)])
+    return {k: evaluate(sp[k]) for k in ("val", "test_id", "test_ood")}, best, pred_all
 
 
 def main():
@@ -101,7 +102,7 @@ def main():
     print({k: len(v) for k, v in sp.items()}, flush=True)
     res = []
     for s in range(a.seeds):
-        r, best = fit(X, Y, M, sp, s, a.epochs, a.width, a.depth)
+        r, best, _ = fit(X, Y, M, sp, s, a.epochs, a.width, a.depth)
         res.append(r)
         print(s, json.dumps(r), flush=True)
     summ = {k: {m: float(np.mean([r[k][m] for r in res])) for m in ("A_mean", "Q_mean", "Q_median", "Q_p90")}
