@@ -368,3 +368,20 @@ carotid). I wrote that "the benchmark suggests zeta = 9 is the common closure"; 
 vessels like the carotid, so the parabolic closure used for the CoW dataset (zeta = 2) is the better-supported default and matches the
 carotid benchmark. The CoW dataset therefore stays as it is; no regeneration is needed for this reason. The sensitivity run above
 (zeta 2 -> 9: Q 1.7%, P 6% median) stays as a bound on the closure uncertainty and should be quoted as such.
+
+## Update 2026-11-07: topology-cluster bootstrap
+
+`reliability/cluster_bootstrap.py`: resample held-out topologies (24 in `variant`, 38 in `complexity`), then samples within them;
+mean AUROC over the two ensembles. The earlier sample-level CIs were too narrow, as expected.
+
+| signal | variant Q-label | variant A-label | complexity Q-label | complexity A-label |
+| --- | --- | --- | --- | --- |
+| S1 junction mass | 0.74 [0.59, 0.85] | 0.75 [0.66, 0.83] | 0.90 [0.84, 0.94] | 0.66 [0.56, 0.74] |
+| S2 junction pressure | 0.60 [0.48, 0.72] | 0.56 [0.47, 0.68] | 0.65 [0.56, 0.73] | 0.53 [0.45, 0.62] |
+| S3 PDE residual | 0.64 [0.54, 0.73] | 0.53 [0.42, 0.64] | 0.69 [0.58, 0.79] | 0.63 [0.55, 0.70] |
+| S4 inlet mismatch | 0.73 [0.64, 0.83] | 0.71 [0.59, 0.81] | 0.92 [0.87, 0.96] | 0.61 [0.49, 0.72] |
+| S5 ensemble spread | 0.49 [0.39, 0.61] | 0.46 [0.33, 0.61] | 0.74 [0.64, 0.83] | 0.65 [0.57, 0.73] |
+| S6 input distance | 0.63 [0.56, 0.70] | 0.58 [0.51, 0.66] | 0.64 [0.56, 0.73] | 0.61 [0.54, 0.68] |
+
+Still above chance for S1/S4 on every split and label except S4 with the A label on `complexity` (CI includes 0.5). S2, S3 (A label)
+and S5 (`variant`) include 0.5 in their intervals. Only S1 and S4 can be called informative.
