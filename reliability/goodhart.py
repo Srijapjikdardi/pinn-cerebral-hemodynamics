@@ -91,6 +91,8 @@ def main(paths):
             tr = [decompose(Ysub[j].astype(np.float64), msub[j]) for j in range(len(sub))]
             floor = {k: float(np.median([r[k] for r in tr])) for k in keys}
             print("exact-solver floor (median):", {k: f"{v:.2e}" for k, v in floor.items()})
+        np.savez(p.replace(".npz", "_decomp.npz"), idx=ood, floor=np.array([floor[k] for k in keys]), keys=np.array(keys),
+                 **{k: np.array([r[k] for r in rows]) for k in keys})  # small cache for figures
         print(f"\n{p}  OOD err_Q {d['err_Q'][ood].mean():.3f}")
         for k in keys:
             s = np.array([r[k] for r in rows])

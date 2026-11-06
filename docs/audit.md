@@ -561,3 +561,16 @@ hands it to the solver, so the gain over random at that rate is small (1-5 point
 - On `complexity` 93% (graph) of held-out cases exceed the val p90 threshold, so AUROC there rests on about 40 "good" cases. With the
   balanced ranking label (OOD median), graph area/pressure ranking is 0.81-0.86 for S1-S5 (vs 0.60-0.77 at val p90). The earlier
   "pressure detection is weak under extrapolation" was largely label imbalance; report both.
+
+## Update 2026-11-07 (session 2, steps 7-8): figures, literature refresh, one new negative finding
+
+- `scripts/make_figures.py` -> `figures/fig1-4` (PNG + PDF; fig5 after the `vessel_*` runs). Reads only `outputs/*.npz` and the
+  small `outputs/*_decomp.npz` caches now written by `reliability/goodhart.py`. Palette: validated categorical slots (dataviz
+  reference, light mode; CVD worst adjacent dE 9.1, pass); identity also carried by marker shape and legends.
+- `docs/related_work.md`: refresh. New close neighbours: NeuroForge v3 (residual = trust signal across three backbones, not a correction
+  objective), Musah arXiv 2608.21683 (lower residual selects the worse PINN in most matched pairs), Error-Conditioned Neural Solvers
+  arXiv 2606.27354 (residual falls while error rises), Kim et al. arXiv 2411.17971 (GNN on unseen cerebral vascular structures).
+  No study found that measures failure detectability after hard constraint enforcement or where the removed violation goes.
+- New negative finding (fig 4): the graph surrogate beats the MLP at 0-5 absent vessels but is worse at 6 absent (median OOD flow error
+  0.55 / 0.47 for graph seeds 600 / 700 vs 0.37 for the MLP; n = 41 samples). Its topology inductive bias helps interpolation and mild
+  extrapolation and fails hardest on the most extreme graphs. Report it; it also motivates the fallback.
