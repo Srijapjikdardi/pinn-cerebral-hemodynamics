@@ -306,3 +306,21 @@ Consequences:
 - IMPORTANT: the CoW dataset uses K_R = 8 pi mu / rho (parabolic) with mu = 4.5 mPa s following Alastruey 2007's Smith 2001
   closure; the benchmark suggests zeta = 9 is the common closure for 1D codes. This choice changes pressure by a few percent
   and flow by more. Decide deliberately; if the paper claims a physiologically faithful solver, document the closure and test sensitivity.
+
+## Update 2026-11-06: Boileau 2015 benchmark 1 (single pulse) against the six codes
+
+Data: supplement `Benchmark1_SinglePulseModel` (supplied by you; pressure vs distance at t = 0.1-1.5 s for six codes).
+`scripts/gate0/boileau1_run.py`; relative L2 of pressure profiles against the six-code mean:
+
+| case | six-code spread about their mean | ours vs six-code mean |
+| --- | --- | --- |
+| inviscid | 1.61% | 1.88% |
+| viscous, mu = 4 mPa s, friction 8 pi mu (parabolic) | 2.01% | 22.36% |
+| viscous, friction scaled for zeta = 9 (x2.53) | 2.01% | 2.90% |
+
+Peaks at t = 0.1 / 0.7 / 1.5 s (kPa), viscous: reference 0.0201 / 0.0157 / 0.0112; zeta = 9: 0.0202 / 0.0161 / 0.0118;
+parabolic 0.0204 / 0.0187 / 0.0165. The inviscid case matches the six codes within their own spread. The viscous case
+matches only with the zeta = 9 closure; the parabolic closure used for the CoW dataset decays too slowly (peak at 1.5 s
+0.0165 vs 0.0112 kPa) over a 10 m tube. CoW vessels are at most 12 cm, so the effect there is much smaller, but it is not
+zero: this strengthens the open decision on the friction closure noted above (test sensitivity or regenerate with zeta = 9).
+Cases 2, 4, 6 (carotid, aortic bifurcation, ADAN56; data on hand) not yet compared.
