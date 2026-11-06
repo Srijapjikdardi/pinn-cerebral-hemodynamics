@@ -342,3 +342,29 @@ Reading: flow and area barely change (Q 1.7% median, below the surrogate error o
 11% at the systolic peak, because P is a steep function of small area changes. Any pressure-based claim made on the parabolic-closure
 dataset would carry that bias; flow-based reliability results are less affected. Given two benchmarks favour zeta = 9, regenerate the
 dataset with it before final results. (Not fitted to the CoW; chosen from the benchmark paper.)
+
+## Update 2026-11-07: Boileau 2015 benchmark 2 (common carotid artery) and a correction on the friction closure
+
+Data: supplement `Benchmark2_CommonCarotidArtery` (inflow.txt; NumData: 3-D reference and six 1D codes, each 1D file holds the whole run,
+so the last cycle is the window t = 8.8-9.9 s from the README). `scripts/gate0/boileau2_run.py`. Setup from the paper (Tables I, III):
+L 126 mm, rd 3 mm (our A0 := Ad, pressure offset Pd = 10.933 kPa), h 0.3 mm, E 700 kPa, rho 1060, mu 4 mPa s, Windkessel R1 2.4875e8,
+C 1.7529e-10, R2 1.8697e9, Pout 0, **zeta = 2** (the paper's value for this case = our default friction 8 pi mu / rho).
+The 3-D file is shifted by 0.055 s relative to the 1D time axis (inflow.txt: "add 0.055 to one period to have the minimum flow at t=0");
+I applied exactly that shift; fitting the shift against the six-code mean (not our solution) gives 57 ms, so 2 ms residual.
+Relative RMS over the cycle at the midpoint (normalised by RMS of the reference):
+
+| quantity | ours vs 3-D | ours vs six-code mean | six-code spread about their mean |
+| --- | --- | --- | --- |
+| pressure | 0.31% | 0.02% | 0.02% |
+| flow | 0.67% | 0.08% | 0.04% |
+| radius change | 1.84% | 0.09% | 0.10% |
+
+Ours agrees with the six 1D codes to within about their own spread, and with the 3-D reference to under 1% for P and Q (the paper
+reports under 1% for all three; our radius-change figure is 1.8% in this normalisation, which I did not try to reconcile).
+With zeta = 9 on this case the agreement worsens (P 0.50%, dr 2.03% vs the six codes): the paper uses zeta = 2 for the carotid.
+
+CORRECTION to the earlier friction note: the paper sets zeta per test case (9 for the aorta cases and the single pulse, 2 for the
+carotid). I wrote that "the benchmark suggests zeta = 9 is the common closure"; that over-generalised. Cerebral arteries are small
+vessels like the carotid, so the parabolic closure used for the CoW dataset (zeta = 2) is the better-supported default and matches the
+carotid benchmark. The CoW dataset therefore stays as it is; no regeneration is needed for this reason. The sensitivity run above
+(zeta 2 -> 9: Q 1.7%, P 6% median) stays as a bound on the closure uncertainty and should be quoted as such.
