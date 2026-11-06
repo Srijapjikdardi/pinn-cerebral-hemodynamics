@@ -79,3 +79,17 @@ def project_junctions(out_n, ys, idx, M, P):
     pred = pred.clone()
     pred[:, :, 1] = Q + dq * m[:, :, None, None]
     return pred / ys
+
+
+def junction_residual_per_sample(pred, idx, M, P):
+    """Per-sample junction-mass violation of a physical-unit prediction (B,V,2,NT,NX), normalised like signals.S1:
+    mean over junctions with >= 2 present ends of mean_t |sum_e sign_e Q_e| / max |Q| over present vessels. Used on the raw
+    network output before project_junctions, i.e. the size of the correction the hard-constraint layer had to apply."""
+    Q = pred[:, :, 1]
+    m = M[idx]
+    ends = torch.stack([Q[..., 0], Q[..., -1]], -1) * m[:, :, None, None]
+    nodes = P["nodes"]
+    resj = torch.einsum("bvte,kve->bkt", ends, nodes).abs().mean(-1)  # (B,K)
+    cnt = ((m[:, None, :, None] * nodes.abs()[None]).sum((2, 3)) >= 2).float()
+    qscale = (Q.abs() * m[:, :, None, None]).amax(dim=(1, 2, 3)).clamp_min(1e-30)
+    return (resj * cnt).sum(1) / cnt.sum(1).clamp_min(1.0) / qscale

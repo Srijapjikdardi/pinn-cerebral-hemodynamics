@@ -16,12 +16,15 @@ Evidence and every number below: [`docs/audit.md`](docs/audit.md). Threats and t
 2. **Two physics checks carry real signal under shift.** Within held-out topologies, junction mass conservation (S1) and inlet-flow
    consistency (S4) reach AUROC 0.73-0.92 for flow error (topology-cluster bootstrap CIs exclude 0.5). Pressure/area error is
    harder (0.53-0.75). Ensemble spread is at chance on `variant` (0.46-0.49).
-3. **Goodhart effect.** A surrogate with a hard junction-conservation layer satisfies S1 to 1e-8 (below the exact solver's
-   discretisation floor), is no more accurate (OOD flow error 8.8% vs 9.3%), and S1 drops to chance (0.51-0.56). A check the
-   model enforces stops being a detector; the checks it does not enforce keep their power.
+3. **Goodhart effect, and where the error goes.** Add a hard junction-conservation layer to either surrogate: S1 falls to
+   round-off (1e-8, far below the exact solver's 1.6e-4 floor) and stops detecting errors, while accuracy improves slightly
+   (OOD flow error -5 to -15%). The inconsistency is not removed but moved into the vessel interior: a cycle-mean flow-balance
+   check (S7) rises 5-18x and reaches AUROC 0.74-0.94 on all four model/split pairs. Checks the model does not enforce keep
+   their power. (S7 was defined after seeing this effect; treat it as a mechanism probe until validated independently.)
 4. **Better surrogate, stronger checks.** A vessel-graph surrogate (`models/graph_surrogate.py`) halves held-out-topology
    flow error (4.1% vs 9.3%). On it, S1 reaches AUROC 0.95 [0.90, 0.98], ensemble spread becomes informative (0.90), and an
-   S1-gated fallback tracks the oracle. Extrapolation to >= 4 absent vessels stays hard for both families (21-22%).
+   S1-gated fallback tracks the oracle. Results hold on a second ensemble and on the
+   physiological-pressure subset. Extrapolation to >= 4 absent vessels stays hard for both families (18-24% OOD flow error).
 5. **Fallback is a safety mechanism, not a speed-up, under shift.** The solver takes 2.5 s per case; a val-calibrated gate defers
    2-30x more often on held-out topologies without ever seeing them, and beats random deferral by 5-10 points of error reduction.
 
@@ -39,7 +42,7 @@ itself (see related work in `docs/audit.md`), or results for pressure as strong 
 | `models/graph_surrogate.py` | Vessel-graph message-passing surrogate (second architecture) |
 | `reliability/` | Signals S1-S6, AUROC / risk-coverage, cluster bootstrap, fallback policy, Goodhart decomposition |
 | `scripts/gate0/` | Solver verification: mesh study, timing, Boileau et al. 2015 benchmarks 1, 2, 5 |
-| `tests/` | 38 tests; 19 strict xfails document defects of the legacy solver kept for the audit trail |
+| `tests/` | 36 tests plus 19 strict xfails that document defects of the legacy solver kept for the audit trail |
 | `docs/legacy_README.md`, `models/gpinn.py`, `data/generate_synthetic.py` | Legacy G-PINN prototype. Its solver failed verification (see audit); kept for history only |
 
 ## Reproduce

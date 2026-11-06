@@ -1,0 +1,6 @@
+member 0 best val relL2 0.0254
+member 1 best val relL2 0.0259
+member 2 best val relL2 0.0264
+member 3 best val relL2 0.0249
+member 4 best val relL2 0.0254
+saved outputs/relprojgraph_variant.npz

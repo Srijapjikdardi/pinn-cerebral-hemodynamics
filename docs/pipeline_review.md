@@ -46,3 +46,18 @@ Novelty is domain plus topology shift plus a systematic evaluation, not the idea
    in vivo or independent-solver validation we do not have).
 2. Provide the Boileau paper PDF (or Table VII) if benchmark 4 is wanted.
 3. Approve the physics-regularised surrogate as the next experiment (about 1.5 h compute).
+
+## Status update 2026-11-07 (session 2)
+
+- Threat 1 (one surrogate family; PINN-style surrogates): addressed. Second architecture (vessel-graph surrogate, 2x lower held-out error)
+  and a hard junction-projection variant of both. Result: the enforced check (S1) becomes uninformative, the others survive, and the
+  displaced inconsistency is detectable (S7). Soft physics loss (w = 0.03) remains inconclusive as before.
+- Threat 2 (Q-specific signals): partly addressed. On the graph surrogate S1/S2/S5 reach 0.76-0.82 under the area label on `variant`;
+  on `complexity` the apparent weakness is mostly label imbalance (balanced ranking label 0.81-0.86).
+- Threat 3 (modest gain): addressed for the graph surrogate (S1 gate 74% error reduction vs 52% random at the same rate on `variant`;
+  risk-coverage on the oracle curve).
+- Threat 5 (statistics): topology-cluster CIs, two ensembles per model, four label definitions. Still open: `vessel_*` splits.
+- Threat 6 (synthetic physiology): physiological-subset results reported; graph unchanged, MLP weaker. Still open: sensitivity to inflow
+  and pulsatility assumptions.
+- New caveat: S7 was defined after seeing the projection results; validate before claiming it as a general detector.
+- Still open: threats 7 (second domain), 8 (Boileau 4, ADAN56), `vessel_*` splits, figures, literature refresh.

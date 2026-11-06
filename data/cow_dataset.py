@@ -22,10 +22,12 @@ def a0_of(name, r_scale=1.0):
     return np.pi * (GEO["vessels"][name]["r_cm"] * 1e-2 * r_scale) ** 2
 
 
-def load(path, physiological_only=False):
+def load(path, physiological_only=False, indices=None):
+    """indices: optional positions in sorted key order to load (memory-light partial load)."""
     X, Y, M, meta = [], [], [], []
     with h5py.File(path, "r") as h5:
-        for k in sorted(h5.keys()):
+        keys = sorted(h5.keys())
+        for k in (keys if indices is None else [keys[i] for i in indices]):
             g = h5[k]
             m = json.loads(g.attrs["meta"])
             if physiological_only and not m["physiological"]:

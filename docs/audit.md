@@ -477,3 +477,87 @@ Reading:
 - Pressure/area detection under extrapolation stays weak (S1 0.60, CI includes 0.5).
 - Limits: one graph ensemble per split; projected-MLP rerun with saved predictions died (out of memory with two jobs on 8 GB),
   so `reliability/goodhart.py` decomposition and the projected-graph Goodhart test are still to run.
+
+## Update 2026-11-07 (session 2, steps 1-5): Goodhart test on both architectures, where the inconsistency goes, stability, label sensitivity
+
+New code: `training/physics_loss.py::junction_residual_per_sample` (S8 = junction violation of the raw output before projection, i.e. the
+size of the correction the layer applied); `reliability/goodhart.py` (S1 at end / first interior points, S3 split into mass and momentum,
+S7 cycle-mean flow balance along each vessel: in a periodic exact solution mean_t Q is constant in x); `reliability/sensitivity.py`
+(physiological subset; labels val p75/p90/p95, 2x val median, and OOD median as an evaluation-only ranking label). Predictions are saved
+to gitignored `outputs/*_pred.npz` (float16). Peak memory in `reliability_eval` cut (in-place accumulation, `del Yn` in `fit`): two
+jobs fit on 8 GB. All runs: 5 members, 100 epochs, same splits; seed bases MLP 100 / projected MLP 500 / graph 600, 700 / projected graph 600.
+
+### 1. Hard junction projection, both architectures (AUROC within held-out topologies, err_Q label val p90 / err_A label val p90)
+
+| split | surrogate | OOD err_Q | S1 | S2 | S3 | S4 | S5 | S8 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| variant | MLP | 0.093 | 0.73 / 0.75 | 0.59 / 0.55 | 0.62 / 0.54 | 0.70 / 0.70 | 0.48 / 0.47 | - |
+| variant | MLP + projection | 0.088 | 0.56 / 0.48 | 0.63 / 0.61 | 0.65 / 0.54 | 0.67 / 0.69 | 0.51 / 0.46 | 0.30 / 0.36 |
+| variant | graph | 0.041 | 0.95 / 0.82 | 0.84 / 0.77 | 0.74 / 0.55 | 0.74 / 0.65 | 0.90 / 0.80 | - |
+| variant | graph + projection | 0.035 | 0.78* / 0.64* | 0.81 / 0.76 | 0.82 / 0.58 | 0.72 / 0.59 | 0.86 / 0.73 | 0.63 / 0.57 |
+| complexity | MLP | 0.241 | 0.90 / 0.65 | 0.63 / 0.55 | 0.72 / 0.63 | 0.91 / 0.59 | 0.74 / 0.63 | - |
+| complexity | MLP + projection | 0.211 | 0.51 / 0.35 | 0.61 / 0.55 | 0.72 / 0.63 | 0.93 / 0.60 | 0.74 / 0.64 | 0.64 / 0.55 |
+| complexity | graph | 0.214 | 0.93 / 0.60 | 0.82 / 0.66 | 0.89 / 0.77 | 0.87 / 0.72 | 0.86 / 0.77 | - |
+| complexity | graph + projection | 0.183 | 0.49 / 0.32 | 0.94 / 0.75 | 0.91 / 0.82 | 0.88 / 0.81 | 0.97 / 0.86 | 0.69 / 0.62 |
+
+The MLP + projection rows reproduce the earlier run (same seeds) to two decimals.
+*Projected S1 values are 6e-9 to 2e-8, i.e. float32 round-off, 10^4 below the exact-solver floor (1.6e-4). The 0.78 is round-off
+structure: rounding S1 to 1e-7 gives AUROC 0.50, to 1e-8 gives 0.67. Any real deployment tolerance (which cannot be below the solver's
+own discretisation floor) makes S1 constant. Read as: S1 is uninformative once enforced, on both architectures.
+- Projection makes the surrogate slightly more accurate (OOD err_Q -5 to -15%), so the loss of S1 is not a loss of accuracy.
+- Checks the layer does not enforce keep or gain power (graph complexity: S2 0.94, S5 0.97).
+- S8 (how much the layer had to correct) is a poor detector (0.30-0.69): once projection is in the model the raw output is not trained
+  to be consistent (raw violation median 0.10 vs 0.011 for the unprojected graph), so its size says little about the final error.
+
+### 2. Where the inconsistency goes (`reliability/goodhart.py`, err_Q / err_A label val p90; floors = median on exact solver output)
+
+| split | surrogate | S7 mean-flow balance, x floor | S7 AUROC | S3 mass AUROC |
+| --- | --- | --- | --- | --- |
+| variant | MLP | 22x | 0.66 / 0.53 | 0.51 / 0.44 |
+| variant | MLP + projection | 233x | 0.78 / 0.67 | 0.38 / 0.37 |
+| variant | graph | 20x | 0.66 / 0.50 | 0.29 / 0.33 |
+| variant | graph + projection | 99x | **0.90 / 0.74** | 0.19 / 0.28 |
+| complexity | MLP | 24x | 0.58 / 0.48 | - |
+| complexity | MLP + projection | 431x | 0.74 / 0.53 | 0.26 / 0.29 |
+| complexity | graph | 42x | 0.92 / 0.64 | 0.23 / 0.34 |
+| complexity | graph + projection | 329x | **0.94 / 0.74** | 0.08 / 0.21 |
+
+Mechanism: the layer removes the junction residual by redistributing it along each vessel (linear ramp), which breaks the interior
+balance of mean flow. S7 rises 5-18x above its unprojected value and becomes a strong detector in all four cases. The constraint does
+not remove the inconsistency; it moves it to where the enforced check does not look. Recommendation for the paper: when a surrogate
+enforces a constraint, check the quantity the enforcement mechanism perturbs.
+Caveats: (a) S7 was defined after seeing the projected results (it targets the ramp), so it is a mechanism probe, not a pre-registered
+detector; it should be validated on an independent architecture or split before being claimed as a general signal. (b) The S3 mass
+component is strongly anti-correlated with error (0.08-0.51) because it is normalised by |A_t| + |Q_x|, which grow with the error;
+do not flip its sign post hoc. (c) S1 values in `goodhart.py` read float16-stored predictions (quantisation about 2e-3); the
+exact-to-round-off S1 is in the main npz.
+
+### 3. Second graph ensemble (seed base 700)
+
+OOD err_Q: variant 0.0406 / 0.0391; complexity 0.214 / 0.188 (seed 600 / 700). Two-ensemble topology-cluster bootstrap:
+
+| signal | variant Q | variant A | complexity Q | complexity A |
+| --- | --- | --- | --- | --- |
+| S1 | 0.95 [0.91, 0.98] | 0.82 [0.69, 0.92] | 0.95 [0.91, 0.98] | 0.62 [0.49, 0.76] |
+| S2 | 0.84 [0.73, 0.92] | 0.76 [0.63, 0.88] | 0.84 [0.75, 0.92] | 0.65 [0.50, 0.81] |
+| S3 | 0.75 [0.60, 0.88] | 0.54 [0.37, 0.72] | 0.90 [0.83, 0.96] | 0.77 [0.61, 0.90] |
+| S4 | 0.76 [0.65, 0.86] | 0.64 [0.53, 0.75] | 0.87 [0.78, 0.94] | 0.71 [0.50, 0.87] |
+| S5 | 0.89 [0.81, 0.95] | 0.77 [0.65, 0.86] | 0.89 [0.82, 0.95] | 0.81 [0.67, 0.91] |
+| S6 | 0.50 [0.41, 0.59] | 0.55 [0.47, 0.62] | 0.54 [0.40, 0.65] | 0.65 [0.48, 0.77] |
+
+Per-ensemble AUROC differs by at most 0.05 (S1 complexity Q: 0.93 / 0.97). Extrapolation error varies more between seeds (21% vs 19%).
+
+### 4. Graph fallback on `complexity`
+
+Risk-coverage of S1/S3/S4/S5/fused lies within 0.01 of the oracle at every coverage (e.g. defer 20%: S4 0.112, oracle 0.112, random
+0.171). Val-calibrated gates defer 92-100% of held-out `complexity` cases (9-31% in distribution): the gate recognises extrapolation and
+hands it to the solver, so the gain over random at that rate is small (1-5 points) because almost everything should be deferred.
+
+### 5. Physiological subset and label definition (`reliability/sensitivity.py`)
+
+- Graph, `variant`, physiological only (274 samples, 23 topologies): S1 0.93 [0.85, 0.98] Q, 0.82 [0.66, 0.94] A; S5 0.87 / 0.81.
+  Unchanged from all samples. MLP on the same subset is weaker: S1 0.62 [0.48, 0.77] Q, S4 0.67 [0.58, 0.77].
+- Thresholds val p75 / p90 / p95 / 2x val median move graph AUROCs by at most 0.06 (variant).
+- On `complexity` 93% (graph) of held-out cases exceed the val p90 threshold, so AUROC there rests on about 40 "good" cases. With the
+  balanced ranking label (OOD median), graph area/pressure ranking is 0.81-0.86 for S1-S5 (vs 0.60-0.77 at val p90). The earlier
+  "pressure detection is weak under extrapolation" was largely label imbalance; report both.

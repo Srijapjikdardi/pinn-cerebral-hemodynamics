@@ -46,6 +46,7 @@ def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys
     xm, xs = X[tr].mean(0), X[tr].std(0).clamp_min(1e-6)
     ys = Y[tr].flatten(0, 0).abs().amax(dim=(0, 3, 4), keepdim=True).clamp_min(1e-12)  # (1,V,2,1,1) scale
     Xn, Yn = (X - xm) / xs, Y / ys
+    yshape = Yn.shape[1:]
     flat = Yn.shape[1:].numel()
     if arch == "graph":
         from models.graph_surrogate import GraphSurrogate
@@ -61,7 +62,7 @@ def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys
 
     def predict(idx):
         with torch.no_grad():
-            out = net(idx).view(len(idx), *Yn.shape[1:])
+            out = net(idx).view(len(idx), *yshape)
             if project:
                 from training.physics_loss import project_junctions
                 out = project_junctions(out, ys, idx, M, phys)
@@ -72,7 +73,7 @@ def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys
         perm = tr[torch.randperm(len(tr))]
         for i in range(0, len(perm), bs):
             b = perm[i:i + bs]
-            out = net(b).view(len(b), *Yn.shape[1:])
+            out = net(b).view(len(b), *yshape)
             if project:
                 from training.physics_loss import project_junctions
                 out = project_junctions(out, ys, b, M, phys)
@@ -89,6 +90,7 @@ def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys
             if v < best:
                 best, best_state = v, {k: t.clone() for k, t in model.state_dict().items()}
     model.load_state_dict(best_state); model.eval()
+    del Yn  # free one field copy before full-dataset prediction (memory: two jobs on 8 GB)
 
     def evaluate(idx):
         idx = torch.as_tensor(idx)
@@ -98,7 +100,14 @@ def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys
         return dict(n=len(idx), A_mean=e[:, 0].mean().item(), Q_mean=e[:, 1].mean().item(),
                     Q_p90=e[:, 1].quantile(0.9).item(), Q_median=e[:, 1].median().item())
     pred_all = torch.cat([predict(torch.arange(i, min(i + 128, len(X)))) * ys for i in range(0, len(X), 128)])
-    return {k: evaluate(sp[k]) for k in ("val", "test_id", "test_ood")}, best, pred_all
+    res = {k: evaluate(sp[k]) for k in ("val", "test_id", "test_ood")}
+    if project:  # size of the correction the projection applied = junction violation of the raw output
+        from training.physics_loss import junction_residual_per_sample
+        with torch.no_grad():
+            raw = torch.cat([junction_residual_per_sample(net(c).view(len(c), *yshape) * ys, c, M, phys)
+                             for c in (torch.arange(i, min(i + 128, len(X))) for i in range(0, len(X), 128))])
+        return res, best, pred_all, raw
+    return res, best, pred_all
 
 
 def main():

@@ -43,13 +43,16 @@ def main():
     s1 = torch.zeros_like(Yt)
     s2 = torch.zeros_like(Yt)
     for k in range(a.members):
-        _, best, pred = fit(Xt, Yt, Mt, sp, a.seed_base + k, a.epochs, a.width, a.depth, lr=a.lr, phys=phys, phys_w=a.phys_weight, project=a.project, arch=a.arch)
+        r = fit(Xt, Yt, Mt, sp, a.seed_base + k, a.epochs, a.width, a.depth, lr=a.lr, phys=phys, phys_w=a.phys_weight, project=a.project, arch=a.arch)
+        best, pred = r[1], r[2]
+        if a.project:
+            raw_sum = r[3] if k == 0 else raw_sum + r[3]
         print(f"member {k} best val relL2 {best:.4f}", flush=True)
         s1 += pred
-        s2 += pred ** 2
+        s2.addcmul_(pred, pred)
+        del pred, r
     mean = s1.div_(a.members)  # in place: keeps peak memory near 4 field copies (OOM on 8 GB otherwise)
     spread = s2.div_(a.members).sub_(mean ** 2).clamp_min_(0).sqrt_()
-    del pred
     ey = rel_l2(mean, Yt, Mt).numpy()
     S5 = np.zeros(n)
     nfield = Yt.shape[2] * Yt.shape[3] * Yt.shape[4]
@@ -79,6 +82,8 @@ def main():
     for k in sig[0]:
         out[k] = np.array([s[k] for s in sig])
         out["truth_" + k] = np.array([s[k] for s in truth])
+    if a.project:  # mean over members of the raw-output junction violation (before the hard-constraint layer)
+        out["S8_projection_correction"] = (raw_sum / a.members).numpy()
     for k, v in sp.items():
         out["idx_" + k] = np.asarray(v)
     keep = np.concatenate([sp['val'], sp['test_id'], sp['test_ood']]).astype(int)

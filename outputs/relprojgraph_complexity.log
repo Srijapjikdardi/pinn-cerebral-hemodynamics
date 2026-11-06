@@ -1,0 +1,6 @@
+member 0 best val relL2 0.0596
+member 1 best val relL2 0.0591
+member 2 best val relL2 0.0647
+member 3 best val relL2 0.0537
+member 4 best val relL2 0.0653
+saved outputs/relprojgraph_complexity.npz

@@ -13,6 +13,8 @@ for sp in variant complexity; do
   run --split $sp --seed-base 400 --phys-weight 0.03 --out outputs/relphys_${sp}.npz  # soft physics loss
   run --split $sp --seed-base 500 --project --out outputs/relproj_${sp}.npz           # hard junction projection
   run --split $sp --seed-base 600 --arch graph --width 128 --out outputs/relgraph_${sp}.npz   # vessel-graph surrogate
+  run --split $sp --seed-base 700 --arch graph --width 128 --out outputs/relgraph_${sp}_s700.npz
+  run --split $sp --seed-base 600 --arch graph --width 128 --project --out outputs/relprojgraph_${sp}.npz
 done
 
 for sp in variant complexity; do
@@ -20,5 +22,8 @@ for sp in variant complexity; do
   python reliability/robustness.py outputs/rel_${sp}.npz outputs/rel_${sp}_s200.npz
   python reliability/cluster_bootstrap.py outputs/rel_${sp}.npz outputs/rel_${sp}_s200.npz
   python reliability/fallback.py outputs/rel_${sp}.npz $D
-  python reliability/goodhart.py outputs/rel_${sp}.npz outputs/relproj_${sp}.npz outputs/relgraph_${sp}.npz
+  python reliability/cluster_bootstrap.py outputs/relgraph_${sp}.npz outputs/relgraph_${sp}_s700.npz
+  python reliability/sensitivity.py outputs/relgraph_${sp}.npz
+  python reliability/fallback.py outputs/relgraph_${sp}.npz $D
+  python reliability/goodhart.py outputs/rel_${sp}.npz outputs/relproj_${sp}.npz outputs/relgraph_${sp}.npz outputs/relprojgraph_${sp}.npz
 done

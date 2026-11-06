@@ -7,6 +7,8 @@ For each surrogate npz (from training/reliability_eval.py, must contain pred_idx
   S3_mom      : interior momentum residual (RMS, normalised)
   S7_meanflow : periodic-state mass balance per vessel: spread along x of the cycle-mean flow, relative to the vessel's
                 cycle-mean flow scale. Exact solution has a constant cycle-mean Q along each vessel (A periodic).
+Caveat: predictions are stored as float16 (relative precision ~1e-3), so S1_end/S1_inner of a junction-projected surrogate
+read the storage quantisation (~2e-3), not its exact-to-round-off S1 (1e-8, in the main npz). S3/S7 values are 10-100x larger.
 and AUROC within held-out topologies against the err_Q / err_A "bad" labels (val 90th percentile).
 
 Usage: PYTHONPATH=. python reliability/goodhart.py outputs/rel_variant.npz outputs/relproj_variant.npz ...
@@ -68,7 +70,9 @@ def labels(d, key):
 
 
 def main(paths):
-    _, Y, _, meta = load(DATA)
+    import h5py, json
+    with h5py.File(DATA, "r") as h5:
+        meta = [json.loads(h5[k].attrs["meta"]) for k in sorted(h5.keys())]
     keys = ["S1_end", "S1_inner", "S3_mass", "S3_mom", "S7_meanflow"]
     floor = None
     for p in paths:
@@ -82,7 +86,9 @@ def main(paths):
         ood = d["idx_test_ood"]
         rows = [decompose(pred_mean[pos[int(i)]].astype(np.float64), meta[i]) for i in ood]
         if floor is None:
-            tr = [decompose(Y[i].astype(np.float64), meta[i]) for i in ood[:200]]
+            sub = list(ood[:200])
+            _, Ysub, _, msub = load(DATA, indices=sub)
+            tr = [decompose(Ysub[j].astype(np.float64), msub[j]) for j in range(len(sub))]
             floor = {k: float(np.median([r[k] for r in tr])) for k in keys}
             print("exact-solver floor (median):", {k: f"{v:.2e}" for k, v in floor.items()})
         print(f"\n{p}  OOD err_Q {d['err_Q'][ood].mean():.3f}")
