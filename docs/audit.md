@@ -324,3 +324,21 @@ matches only with the zeta = 9 closure; the parabolic closure used for the CoW d
 0.0165 vs 0.0112 kPa) over a 10 m tube. CoW vessels are at most 12 cm, so the effect there is much smaller, but it is not
 zero: this strengthens the open decision on the friction closure noted above (test sensitivity or regenerate with zeta = 9).
 Cases 2, 4, 6 (carotid, aortic bifurcation, ADAN56; data on hand) not yet compared.
+
+## Update 2026-11-07: friction-closure sensitivity on the CoW dataset
+
+`scripts/gate0/friction_sensitivity.py`: 150 dataset samples (seed 1, same parameters) re-solved with friction_scale 1 (parabolic,
+dataset) and 2.53 (zeta = 9). All converged. Relative difference over the periodic cycle (median / p90 / max, %):
+
+| field | median | p90 | max |
+| --- | --- | --- | --- |
+| A | 0.30 | 0.37 | 0.52 |
+| Q | 1.74 | 3.01 | 7.07 |
+| P (gauge) | 6.00 | 7.46 | 9.26 |
+| P max | 11.5 | 15.8 | 21.9 |
+| P min | 3.0 | 6.0 | 10.8 |
+
+Reading: flow and area barely change (Q 1.7% median, below the surrogate error of 7-10%), but gauge pressure moves 6% in L2 and
+11% at the systolic peak, because P is a steep function of small area changes. Any pressure-based claim made on the parabolic-closure
+dataset would carry that bias; flow-based reliability results are less affected. Given two benchmarks favour zeta = 9, regenerate the
+dataset with it before final results. (Not fitted to the CoW; chosen from the benchmark paper.)

@@ -373,10 +373,11 @@ class Network:
     Pc: np.ndarray = field(default=None)
     t: float = 0.0
     acc: np.ndarray = field(default=None)
+    friction_scale: float = 1.0  # 1 = parabolic 8 pi mu/rho; 2.53 = Boileau zeta = 9 closure
 
     @property
     def kfr(self):
-        return 8.0 * PI * self.mu / self.rho
+        return self.friction_scale * 8.0 * PI * self.mu / self.rho
 
     def vessel_index(self, name):
         return self.names.index(name)

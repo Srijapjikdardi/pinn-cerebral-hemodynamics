@@ -1,0 +1,6 @@
+N=150, all converged: True
+A relL2     % : median 0.296  p90 0.369  max 0.518
+Q relL2     % : median 1.744  p90 3.014  max 7.068
+P relL2     % : median 5.996  p90 7.464  max 9.257
+P max diff  % : median 11.493  p90 15.767  max 21.924
+P min diff  % : median 2.979  p90 6.026  max 10.782
