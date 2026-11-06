@@ -385,3 +385,26 @@ mean AUROC over the two ensembles. The earlier sample-level CIs were too narrow,
 
 Still above chance for S1/S4 on every split and label except S4 with the A label on `complexity` (CI includes 0.5). S2, S3 (A label)
 and S5 (`variant`) include 0.5 in their intervals. Only S1 and S4 can be called informative.
+
+## Update 2026-11-07: physics-regularised surrogate (partial answer to the "do signals survive PINN training" threat)
+
+`training/physics_loss.py` adds continuity (A_t + Q_x by finite differences) and junction-mass penalties to the data loss; same
+architecture and protocol, 5-member ensembles (`outputs/relphys_*.npz`, seed base 400). Weight chosen from two trial values on a
+1-member 50-epoch `variant` run (val relative L2: w = 0.03 -> 0.118, 0.3 -> 0.170, 3 -> 0.278; data-only about 0.08 at 100 epochs), so
+0.03 was picked for accuracy, not tuned for the reliability result. Within held-out topologies, AUROC (S1/S4 shown; err_Q label / err_A label):
+
+| surrogate | variant S1 | variant S4 | complexity S1 | complexity S4 | OOD err_Q (variant / complexity) |
+| --- | --- | --- | --- | --- | --- |
+| data-only (2 ensembles) | 0.73-0.75 / 0.75 | 0.70-0.76 / 0.70-0.72 | 0.89-0.90 / 0.65-0.66 | 0.91-0.93 / 0.59-0.63 | 0.093-0.096 / 0.241-0.246 |
+| physics-regularised w=0.03 | 0.73 / 0.62 | 0.73 / 0.72 | 0.83 / 0.65 | 0.91 / 0.61 | 0.098 / 0.258 |
+
+Findings, with limits:
+- The weak regulariser did not do what a Goodhart test needs: the median junction-mass signal on held-out topologies is unchanged
+  (variant 0.0245 vs 0.023-0.024; complexity 0.0725 vs 0.072-0.074), i.e. the surrogate still violates junction conservation about
+  100x more than the exact solver (1.6e-4). Accuracy is slightly worse (OOD err_Q 9.8% vs 9.3-9.6%).
+- Because the residual was not driven down, this run cannot show whether signals survive a surrogate that satisfies the physics.
+  It does show that adding these penalties at this weight leaves the signals informative (S1 Q-label 0.73 / 0.83, S4 0.73 / 0.91).
+  Under the area label, S1 on `variant` drops from 0.75 to 0.62 while S2 rises from 0.55 to 0.63 (single ensemble; not interpreted).
+- A decisive test needs a surrogate that actually satisfies the constraints: a stronger or better-scheduled penalty (the MLP trades
+  accuracy for it, w = 0.3 cost 5 points), a hard-constrained output (junction-conserving parametrisation), or a different
+  architecture. Not done. Until then the paper cannot claim robustness to physics-informed training.
