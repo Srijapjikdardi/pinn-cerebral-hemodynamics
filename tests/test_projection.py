@@ -4,8 +4,8 @@ from data.cow_dataset import load
 from training import physics_loss as pl
 
 
-def test_projection_zeroes_junction_residual_and_keeps_true_fields():
-    X, Y, M, meta = load("data/cow_pilot.h5")
+def test_projection_zeroes_junction_residual_and_keeps_true_fields(cow_pilot):
+    X, Y, M, meta = load(cow_pilot)
     Yt, Mt = torch.as_tensor(Y), torch.as_tensor(M)
     P = pl.build(meta, Y.shape[3], Y.shape[4])
     ys = Yt.abs().amax(dim=(0, 3, 4), keepdim=True).clamp_min(1e-12)

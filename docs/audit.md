@@ -437,3 +437,43 @@ Findings:
   construction at those points; a junction check at points the projection does not touch (end-adjacent grid points) is the fair
   test of whether inconsistency remains; planned next. (2) One architecture, one seed base. (3) S4 reads the inlet, which the
   projection does not change, so its survival is expected, not evidence of independence.
+
+## Update 2026-11-07 (session 2): environment restore, vessel-graph surrogate
+
+Restore: `data/cow_v1.h5` regenerated (seed 1, 1765 s on 2 cores); truth signals bit-identical to the committed npz files.
+Data-only MLP `variant` ensemble re-run with predictions saved: OOD err_Q 0.0927 (logged before: 0.093). Tests: 38 pass, 19 strict xfail
+(legacy solver). `tests/test_projection.py` used a gitignored pilot file; now a session fixture generates 8 samples on demand.
+
+Second architecture, `models/graph_surrogate.py`: vessels are nodes, junction adjacency masked to present vessels, 4 rounds of
+message passing (width 128), global mean-pooled readout, decoder shared across vessels. Same inputs, protocol, 5 members, 100 epochs,
+seed base 600. Width/readout chosen on val only (no readout: val relL2 0.141; with readout: 0.027). Mean relative L2, Q / A:
+
+| split | surrogate | val | test_id | test_ood |
+| --- | --- | --- | --- | --- |
+| variant | MLP | 6.1% / 7.1% | 6.7% / 7.8% | 9.3% / 9.6% |
+| variant | graph | 2.3% / 2.2% | 2.3% / 2.4% | 4.1% / 3.8% |
+| complexity | MLP | 11.3% / 14.0% | 11.4% / 13.9% | 22.4% / 21.2% |
+| complexity | graph | 5.1% / 5.2% | 5.3% / 4.4% | 21.4% / 21.6% |
+
+AUROC within held-out topologies, topology-cluster bootstrap 95% CI (labels relative to each surrogate's own val p90):
+
+| signal | variant Q | variant A | complexity Q | complexity A |
+| --- | --- | --- | --- | --- |
+| S1 junction mass | 0.95 [0.90, 0.98] | 0.82 [0.70, 0.92] | 0.93 [0.87, 0.98] | 0.60 [0.44, 0.74] |
+| S2 junction pressure | 0.84 [0.72, 0.92] | 0.77 [0.65, 0.88] | 0.82 [0.71, 0.91] | 0.66 [0.50, 0.82] |
+| S3 PDE residual | 0.75 [0.60, 0.88] | 0.55 [0.37, 0.73] | 0.89 [0.82, 0.95] | 0.77 [0.62, 0.89] |
+| S4 inlet mismatch | 0.74 [0.62, 0.84] | 0.65 [0.52, 0.77] | 0.87 [0.78, 0.94] | 0.72 [0.47, 0.92] |
+| S5 ensemble spread | 0.90 [0.82, 0.96] | 0.80 [0.70, 0.89] | 0.87 [0.78, 0.93] | 0.77 [0.61, 0.89] |
+| S6 input distance | 0.50 [0.40, 0.58] | 0.55 [0.47, 0.63] | 0.53 [0.41, 0.65] | 0.62 [0.48, 0.74] |
+
+Fallback, graph, `variant` OOD (n = 386): S1 risk-coverage sits on the oracle curve (defer 30%: 0.020 vs oracle 0.019, random 0.028).
+Val-calibrated q = 0.90: deferral 9% in distribution, 52% on held-out topologies; error reduction 74% vs 52% for random at that rate.
+
+Reading:
+- Topology-aware inductive bias halves held-out-topology error on `variant` but does not fix extrapolation to >= 4 absent vessels
+  (`complexity` OOD 21% for both families).
+- On the better surrogate the physics signals are stronger, not weaker (S1 0.95 vs 0.74), and ensemble spread becomes informative
+  (0.90 vs 0.48): MLP members failed together; graph members disagree where they are wrong.
+- Pressure/area detection under extrapolation stays weak (S1 0.60, CI includes 0.5).
+- Limits: one graph ensemble per split; projected-MLP rerun with saved predictions died (out of memory with two jobs on 8 GB),
+  so `reliability/goodhart.py` decomposition and the projected-graph Goodhart test are still to run.

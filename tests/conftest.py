@@ -40,3 +40,14 @@ def solved(cfg):
     sweep["n_cycles_simulated"] = 1
     out = local_fd_solver(make_patient(), sweep, cfg["solver"])
     return out, sweep
+
+
+@pytest.fixture(scope="session")
+def cow_pilot(tmp_path_factory):
+    """Small verified-solver dataset (8 samples, seed 7) generated on demand, so tests do not depend on gitignored files."""
+    import subprocess
+    import sys
+    out = tmp_path_factory.mktemp("cow") / "cow_pilot.h5"
+    subprocess.run([sys.executable, str(ROOT / "data" / "generate_cow.py"), "--n", "8", "--out", str(out), "--seed", "7",
+                    "--workers", "1"], check=True, cwd=ROOT, capture_output=True)
+    return out

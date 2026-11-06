@@ -3,3 +3,4 @@ __pycache__/
 .pytest_cache/
 data/cow_*.h5
 data/boileau37/
+outputs/*_pred.npz

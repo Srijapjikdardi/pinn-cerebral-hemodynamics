@@ -40,14 +40,20 @@ def rel_l2(pred, y, m):
     return num / den  # (N,2)
 
 
-def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys_w=0.0, project=False):
+def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys_w=0.0, project=False, arch="mlp"):
     torch.manual_seed(seed)
     tr = torch.as_tensor(sp["train"])
     xm, xs = X[tr].mean(0), X[tr].std(0).clamp_min(1e-6)
     ys = Y[tr].flatten(0, 0).abs().amax(dim=(0, 3, 4), keepdim=True).clamp_min(1e-12)  # (1,V,2,1,1) scale
     Xn, Yn = (X - xm) / xs, Y / ys
     flat = Yn.shape[1:].numel()
-    model = MLP(X.shape[1], flat, width, depth)
+    if arch == "graph":
+        from models.graph_surrogate import GraphSurrogate
+        model = GraphSurrogate(Y.shape[3], Y.shape[4], width=width, rounds=depth)
+        net = lambda idx: model(Xn[idx], M[idx])  # noqa: E731
+    else:
+        model = MLP(X.shape[1], flat, width, depth)
+        net = lambda idx: model(Xn[idx])  # noqa: E731
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs)
     best, best_state = 1e9, None
@@ -55,7 +61,7 @@ def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys
 
     def predict(idx):
         with torch.no_grad():
-            out = model(Xn[idx]).view(len(idx), *Yn.shape[1:])
+            out = net(idx).view(len(idx), *Yn.shape[1:])
             if project:
                 from training.physics_loss import project_junctions
                 out = project_junctions(out, ys, idx, M, phys)
@@ -66,7 +72,7 @@ def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys
         perm = tr[torch.randperm(len(tr))]
         for i in range(0, len(perm), bs):
             b = perm[i:i + bs]
-            out = model(Xn[b]).view(len(b), *Yn.shape[1:])
+            out = net(b).view(len(b), *Yn.shape[1:])
             if project:
                 from training.physics_loss import project_junctions
                 out = project_junctions(out, ys, b, M, phys)
