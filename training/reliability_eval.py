@@ -23,6 +23,7 @@ def main():
     ap.add_argument("--members", type=int, default=5)
     ap.add_argument("--epochs", type=int, default=100)
     ap.add_argument("--seed-base", type=int, default=100)
+    ap.add_argument("--phys-weight", type=float, default=0.0)
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     X, Y, M, meta = load(a.data)
@@ -30,10 +31,14 @@ def main():
     topos = [tuple(sorted(m["absent"])) for m in meta]
     sp = make_split(topos, a.split, seed=0)
     n = len(X)
+    phys = None
+    if a.phys_weight > 0:
+        from training import physics_loss
+        phys = physics_loss.build(meta, Y.shape[3], Y.shape[4])
     s1 = torch.zeros_like(Yt)
     s2 = torch.zeros_like(Yt)
     for k in range(a.members):
-        _, best, pred = fit(Xt, Yt, Mt, sp, a.seed_base + k, a.epochs, 256, 4)
+        _, best, pred = fit(Xt, Yt, Mt, sp, a.seed_base + k, a.epochs, 256, 4, phys=phys, phys_w=a.phys_weight)
         print(f"member {k} best val relL2 {best:.4f}", flush=True)
         s1 += pred
         s2 += pred ** 2
