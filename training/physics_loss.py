@@ -54,3 +54,28 @@ def loss(out_n, ys, idx, M, P):
     qs = ys[:, :, 1].max()
     junc = ((resj / qs) ** 2 * cnt[:, :, None]).sum() / (cnt.sum() * resj.shape[2]).clamp_min(1.0)
     return mass, junc
+
+
+def project_junctions(out_n, ys, idx, M, P):
+    """Exact junction-mass projection (hard constraint). For each junction with >= 2 present ends, subtract the signed flow
+    residual r(t) = sum_e sign_e Q_e equally from the ends (end correction -sign_e r/n), spread along each vessel with a linear
+    ramp (full at the junction end, zero at the far end). After projection sum_e sign_e Q_e(end grid point) = 0 exactly.
+    out_n: normalised prediction (B,V,2,NT,NX); returns normalised prediction of the same shape."""
+    pred = out_n * ys
+    Q = pred[:, :, 1]  # (B,V,NT,NX)
+    m = M[idx]
+    nodes = P["nodes"]  # (K,V,2)
+    nx = Q.shape[-1]
+    ends = torch.stack([Q[..., 0], Q[..., -1]], -1)  # (B,V,NT,2)
+    pres = m[:, None, :, None] * nodes.abs()[None]  # (B,K,V,2) present ends of node k
+    n_present = pres.sum((2, 3))  # (B,K)
+    resj = torch.einsum("bvte,kve->bkt", ends * m[:, :, None, None], nodes)
+    share = torch.where(n_present >= 2, 1.0 / n_present.clamp_min(1.0), torch.zeros_like(n_present))  # (B,K)
+    # correction per vessel end: -sign * r * share, summed over nodes (an end belongs to at most one node)
+    corr = -torch.einsum("bkt,kve,bk->bvte", resj, nodes, share)  # (B,V,NT,2)
+    ramp0 = torch.linspace(1.0, 0.0, nx, device=Q.device)
+    ramp1 = torch.linspace(0.0, 1.0, nx, device=Q.device)
+    dq = corr[..., 0:1] * ramp0 + corr[..., 1:2] * ramp1  # (B,V,NT,NX)
+    pred = pred.clone()
+    pred[:, :, 1] = Q + dq * m[:, :, None, None]
+    return pred / ys

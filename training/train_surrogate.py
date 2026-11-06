@@ -40,7 +40,7 @@ def rel_l2(pred, y, m):
     return num / den  # (N,2)
 
 
-def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys_w=0.0):
+def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys_w=0.0, project=False):
     torch.manual_seed(seed)
     tr = torch.as_tensor(sp["train"])
     xm, xs = X[tr].mean(0), X[tr].std(0).clamp_min(1e-6)
@@ -55,7 +55,11 @@ def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys
 
     def predict(idx):
         with torch.no_grad():
-            return model(Xn[idx]).view(len(idx), *Yn.shape[1:])
+            out = model(Xn[idx]).view(len(idx), *Yn.shape[1:])
+            if project:
+                from training.physics_loss import project_junctions
+                out = project_junctions(out, ys, idx, M, phys)
+            return out
 
     for ep in range(epochs):
         model.train()
@@ -63,6 +67,9 @@ def fit(X, Y, M, sp, seed, epochs, width, depth, lr=2e-3, bs=64, phys=None, phys
         for i in range(0, len(perm), bs):
             b = perm[i:i + bs]
             out = model(Xn[b]).view(len(b), *Yn.shape[1:])
+            if project:
+                from training.physics_loss import project_junctions
+                out = project_junctions(out, ys, b, M, phys)
             loss = (((out - Yn[b]) * M[b][:, :, None, None, None]) ** 2).mean()
             if phys is not None and phys_w > 0:
                 from training.physics_loss import loss as plos

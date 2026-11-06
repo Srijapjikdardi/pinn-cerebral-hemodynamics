@@ -408,3 +408,32 @@ Findings, with limits:
 - A decisive test needs a surrogate that actually satisfies the constraints: a stronger or better-scheduled penalty (the MLP trades
   accuracy for it, w = 0.3 cost 5 points), a hard-constrained output (junction-conserving parametrisation), or a different
   architecture. Not done. Until then the paper cannot claim robustness to physics-informed training.
+
+## Update 2026-11-07: hard junction-conservation surrogate (Goodhart test)
+
+`training/physics_loss.py::project_junctions`: a differentiable layer that subtracts the junction flow residual equally from the
+incident vessel ends and spreads it along each vessel with a linear ramp, so sum(sign * Q_end) = 0 holds exactly. It uses only the
+predicted flows and the known topology (no ground truth). Tested in `tests/test_projection.py` (noisy fields: junction loss 5e-4 ->
+below 1e-12 relative; exact solver fields change by under 0.05 normalised units). Trained inside the model (same MLP, 5 members,
+100 epochs, seed base 500). Within held-out topologies (AUROC; err_Q label / err_A label):
+
+| split | surrogate | OOD err_Q | S1 junction mass | S2 | S3 | S4 inlet | S5 | S6 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| variant | data-only | 0.093 | 0.73 / 0.75 | 0.59 / 0.55 | 0.62 / 0.54 | 0.70 / 0.70 | 0.48 / 0.47 | 0.61 / 0.59 |
+| variant | junction-projected | 0.088 | **0.56 / 0.49** | 0.63 / 0.61 | 0.65 / 0.54 | 0.67 / 0.69 | 0.51 / 0.46 | 0.64 / 0.58 |
+| complexity | data-only | 0.241 | 0.90 / 0.65 | 0.63 / 0.55 | 0.72 / 0.63 | 0.91 / 0.59 | 0.74 / 0.63 | 0.64 / 0.63 |
+| complexity | junction-projected | 0.211 | **0.51 / 0.34** | 0.61 / 0.55 | 0.72 / 0.63 | 0.93 / 0.60 | 0.74 / 0.64 | 0.66 / 0.62 |
+
+Findings:
+- Enforcing junction conservation exactly drives S1 to 1e-8 (below the exact-solver floor 1.6e-4) and S1's predictive power to chance
+  (0.51-0.56; 0.34 and 0.49 under the area label), while prediction error does not fall (OOD err_Q 8.8% vs 9.3%; 21% vs 24%).
+  A surrogate can satisfy a physics check completely and still be wrong; a gate built on that check alone would never fire.
+  This is the Goodhart effect, demonstrated on held-out topologies, and it answers the "PINN-trained surrogates" objection: the
+  check that is built into the model stops carrying information; the checks it does not enforce (S3 interior PDE residual, S4 inlet
+  boundary consistency, S5 ensemble spread on `complexity`, S6 input distance) keep their AUROC unchanged.
+- Practical reading: reliability checking should use physics checks the surrogate does not enforce, plus a boundary/input signal;
+  a fused score fit on validation should be re-fit per surrogate.
+- Caveats before use in the paper: (1) the projection acts at the same grid points the S1 signal reads, so S1 is satisfied by
+  construction at those points; a junction check at points the projection does not touch (end-adjacent grid points) is the fair
+  test of whether inconsistency remains; planned next. (2) One architecture, one seed base. (3) S4 reads the inlet, which the
+  projection does not change, so its survival is expected, not evidence of independence.

@@ -24,6 +24,7 @@ def main():
     ap.add_argument("--epochs", type=int, default=100)
     ap.add_argument("--seed-base", type=int, default=100)
     ap.add_argument("--phys-weight", type=float, default=0.0)
+    ap.add_argument("--project", action="store_true", help="hard junction-mass projection layer")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     X, Y, M, meta = load(a.data)
@@ -32,13 +33,13 @@ def main():
     sp = make_split(topos, a.split, seed=0)
     n = len(X)
     phys = None
-    if a.phys_weight > 0:
+    if a.phys_weight > 0 or a.project:
         from training import physics_loss
         phys = physics_loss.build(meta, Y.shape[3], Y.shape[4])
     s1 = torch.zeros_like(Yt)
     s2 = torch.zeros_like(Yt)
     for k in range(a.members):
-        _, best, pred = fit(Xt, Yt, Mt, sp, a.seed_base + k, a.epochs, 256, 4, phys=phys, phys_w=a.phys_weight)
+        _, best, pred = fit(Xt, Yt, Mt, sp, a.seed_base + k, a.epochs, 256, 4, phys=phys, phys_w=a.phys_weight, project=a.project)
         print(f"member {k} best val relL2 {best:.4f}", flush=True)
         s1 += pred
         s2 += pred ** 2
@@ -70,6 +71,9 @@ def main():
         out["truth_" + k] = np.array([s[k] for s in truth])
     for k, v in sp.items():
         out["idx_" + k] = np.asarray(v)
+    keep = np.concatenate([sp['val'], sp['test_id'], sp['test_ood']]).astype(int)
+    out['pred_idx'] = keep
+    out['pred_mean'] = mp[keep].astype(np.float16)  # ensemble-mean predictions (val/test) for later signal computation
     np.savez(a.out, **out)
     print("saved", a.out)
 
