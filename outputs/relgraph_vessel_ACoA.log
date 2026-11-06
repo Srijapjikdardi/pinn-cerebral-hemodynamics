@@ -2,3 +2,5 @@ member 0 best val relL2 0.0366
 member 1 best val relL2 0.0357
 member 2 best val relL2 0.0382
 member 3 best val relL2 0.0374
+member 4 best val relL2 0.0372
+saved outputs/relgraph_vessel_ACoA.npz

@@ -17,6 +17,12 @@ for sp in variant complexity; do
   run --split $sp --seed-base 600 --arch graph --width 128 --project --out outputs/relprojgraph_${sp}.npz
 done
 
+for v in ACoA PCoA_L A1_L P1_L; do   # leave-one-vessel-out, pre-registered S7 test (docs/preregistration_s7.md)
+  run --split vessel_$v --seed-base 600 --arch graph --width 128 --out outputs/relgraph_vessel_$v.npz
+  run --split vessel_$v --seed-base 600 --arch graph --width 128 --project --out outputs/relprojgraph_vessel_$v.npz
+  python reliability/goodhart.py outputs/relgraph_vessel_$v.npz outputs/relprojgraph_vessel_$v.npz
+done
+
 for sp in variant complexity; do
   python reliability/metrics.py outputs/rel_${sp}.npz
   python reliability/robustness.py outputs/rel_${sp}.npz outputs/rel_${sp}_s200.npz
@@ -27,3 +33,5 @@ for sp in variant complexity; do
   python reliability/fallback.py outputs/relgraph_${sp}.npz $D
   python reliability/goodhart.py outputs/rel_${sp}.npz outputs/relproj_${sp}.npz outputs/relgraph_${sp}.npz outputs/relprojgraph_${sp}.npz
 done
+
+python scripts/make_figures.py

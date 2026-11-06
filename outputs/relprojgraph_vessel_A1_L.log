@@ -1,0 +1,6 @@
+member 0 best val relL2 0.0437
+member 1 best val relL2 0.0400
+member 2 best val relL2 0.0435
+member 3 best val relL2 0.0404
+member 4 best val relL2 0.0443
+saved outputs/relprojgraph_vessel_A1_L.npz

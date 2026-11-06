@@ -3,7 +3,8 @@ Fig 1  AUROC per signal with topology-cluster 95% CI, MLP vs graph, variant and 
 Fig 2  Risk-coverage on held-out topologies (variant): mean flow error of retained cases vs coverage.
 Fig 3  Goodhart: S1 and S7 AUROC without / with the junction-projection layer, four model x split pairs.
 Fig 4  Flow error vs number of absent vessels, MLP vs graph (test_id + test_ood of the complexity split).
-Fig 5  Leave-one-vessel-out: OOD flow error and S1/S7 AUROC per held-out vessel (if outputs/relgraph_vessel_*.npz exist).
+Fig 5  Leave-one-vessel-out: flow error and S1 (unconstrained) / S7 (projected) ranking AUROC per held-out vessel
+       (balanced label err > held-out median; the pre-registered val-p90 label is degenerate on A1_L/P1_L, see docs) (if outputs/relgraph_vessel_*.npz exist).
 Colors: validated categorical slots (dataviz reference palette, light mode); identity also carried by marker shape and labels.
 """
 import argparse
@@ -173,13 +174,14 @@ def fig5(out):
         for v in vs:
             if sig == "S1":
                 d = np.load(f"outputs/relgraph_vessel_{v}.npz"); o = d["idx_test_ood"]
-                vals.append(roc_auc_score(label(d)[o], d["S1_junction_mass"][o]))
+                e = d["err_Q"][o]; vals.append(roc_auc_score(e > np.median(e), d["S1_junction_mass"][o]))
             else:
                 d = np.load(f"outputs/relprojgraph_vessel_{v}.npz"); dc = np.load(f"outputs/relprojgraph_vessel_{v}_decomp.npz")
-                vals.append(roc_auc_score(label(d)[dc["idx"]], dc["S7_meanflow"]))
+                e = d["err_Q"][dc["idx"]]; vals.append(roc_auc_score(e > np.median(e), dc["S7_meanflow"]))
         axes[1].plot(x + off, vals, ls="none", marker="o" if sig == "S1" else "s", ms=6, color=col, label=nm)
-    axes[1].axhline(0.7, color="#8a8a85", lw=1, ls="--"); axes[1].text(len(vs) - 0.6, 0.705, "pre-registered 0.70", fontsize=7, ha="right")
-    axes[1].set_xticks(x, vs); axes[1].set_ylim(0.3, 1.0); axes[1].set_ylabel("AUROC, large flow error")
+    axes[1].axhline(0.5, color="#8a8a85", lw=1, ls=":")
+    axes[1].set_xticks(x, vs); axes[1].set_ylim(0.3, 1.0); axes[1].set_ylabel("AUROC, flow error > held-out median")
+    axes[1].set_title("Ranking within held-out cases (exploratory label)", fontsize=9)
     axes[1].legend(loc="lower left", fontsize=7.5)
     fig.tight_layout()
     fig.savefig(out / "fig5_vessel_holdout.png"); fig.savefig(out / "fig5_vessel_holdout.pdf")

@@ -574,3 +574,18 @@ hands it to the solver, so the gain over random at that rate is small (1-5 point
 - New negative finding (fig 4): the graph surrogate beats the MLP at 0-5 absent vessels but is worse at 6 absent (median OOD flow error
   0.55 / 0.47 for graph seeds 600 / 700 vs 0.37 for the MLP; n = 41 samples). Its topology inductive bias helps interpolation and mild
   extrapolation and fails hardest on the most extreme graphs. Report it; it also motivates the fallback.
+
+## Update 2026-11-07 (session 2, step 6): leave-one-vessel-out splits (graph surrogate) and the pre-registered S7 test
+
+Splits `vessel_ACoA`, `vessel_PCoA_L`, `vessel_A1_L`, `vessel_P1_L` (training never sees that vessel absent; 514-774 held-out samples,
+32-48 topologies). Graph surrogate, 5 members, seed base 600, with and without projection. Full table and verdict:
+`docs/preregistration_s7.md`. Figure: `figures/fig5_vessel_holdout`.
+
+- An absence never seen in training is the hardest shift so far: OOD flow error 10.2% (ACoA), 4.7% (PCoA_L), 18.4% (A1_L),
+  17.2% (P1_L) vs 3.0-3.9% in distribution. Missing A1 or P1 reroutes a whole territory through the communicating arteries, a flow
+  pattern the model never saw; missing PCoA changes little.
+- Unprojected graph, val p90 label: S1 1.00 / 0.84 / 0.79 (ACoA / PCoA_L / A1_L; P1_L undefined), S5 1.00 / 0.69 / 0.41. With a
+  balanced label S1 ranks 0.82-0.97 on all four.
+- Projection lowers OOD error on all four (by 12-24%) and S1 goes to chance on all defined splits.
+- Pre-registered S7 test: mechanism (H7b, H7c) supported; fixed-threshold detector bar (H7a) not met (2 pass, 1 fail, 1 undefined).
+- Right side (PCoA_R, A1_R, P1_R) not run; the network and priors are left-right symmetric.

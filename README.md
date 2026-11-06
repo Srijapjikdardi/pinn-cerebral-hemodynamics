@@ -20,7 +20,8 @@ Evidence and every number below: [`docs/audit.md`](docs/audit.md). Threats and t
    round-off (1e-8, far below the exact solver's 1.6e-4 floor) and stops detecting errors, while accuracy improves slightly
    (OOD flow error -5 to -15%). The inconsistency is not removed but moved into the vessel interior: a cycle-mean flow-balance
    check (S7) rises 5-18x and reaches AUROC 0.74-0.94 on all four model/split pairs. Checks the model does not enforce keep
-   their power. (S7 was defined after seeing this effect; treat it as a mechanism probe until validated independently.)
+   their power. A pre-registered replication on leave-one-vessel-out splits confirmed the mechanism (S7 rises 5-16x on all four held-out
+   vessels) but not S7 as a fixed-threshold gate (2 of 4 splits reach AUROC 0.70; see `docs/preregistration_s7.md`).
 4. **Better surrogate, stronger checks.** A vessel-graph surrogate (`models/graph_surrogate.py`) halves held-out-topology
    flow error (4.1% vs 9.3%). On it, S1 reaches AUROC 0.95 [0.90, 0.98], ensemble spread becomes informative (0.90), and an
    S1-gated fallback tracks the oracle. Results hold on a second ensemble and on the
@@ -61,3 +62,4 @@ Boileau et al. 2015 benchmark data are third-party (paper supplement) and not re
 
 Work in progress toward a methods paper. Solver verification: analytic limits, mesh convergence, Boileau 2015 cases 1, 2, 5
 (case 2 within the six reference codes' own spread). Pending: Boileau case 4 and ADAN56, a second topology-shift domain.
+Figures: `python scripts/make_figures.py` -> `figures/`. Related work: `docs/related_work.md`.
