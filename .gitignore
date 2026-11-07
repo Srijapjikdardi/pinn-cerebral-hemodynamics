@@ -4,3 +4,5 @@ __pycache__/
 data/cow_*.h5
 data/boileau37/
 outputs/*_pred.npz
+data/adan56/
+for_me_only/

@@ -589,3 +589,24 @@ Splits `vessel_ACoA`, `vessel_PCoA_L`, `vessel_A1_L`, `vessel_P1_L` (training ne
 - Projection lowers OOD error on all four (by 12-24%) and S1 goes to chance on all defined splits.
 - Pre-registered S7 test: mechanism (H7b, H7c) supported; fixed-threshold detector bar (H7a) not met (2 pass, 1 fail, 1 undefined).
 - Right side (PCoA_R, A1_R, P1_R) not run; the network and priors are left-right symmetric.
+
+## Update 2026-11-07 (session 2): Boileau 2015 benchmark 6 (ADAN56) verified
+
+`scripts/gate0/boileau6_run.py`; data from the supplement (supplied by you) in `data/adan56/` (gitignored). 61 segments / 77 pieces
+split into 1-cm uniform sub-vessels, 31 RCR terminals from `mesh.txt`, inflow from `inflow.txt` (T = 1.0 s). General parameters:
+rho 1040, mu 4.0 mPa s, zeta 2, E 225 kPa, Pd = 10 kPa at A0, Pout 0, h = R0 [0.2802 exp(-5.053 R0) + 0.1324 exp(-0.1114 R0)].
+Caveat: Table XI of the paper could not be read here; rho, mu, zeta, E, Pout come from Yanbarisov et al. 2023 (Table 4), which
+reproduces it; the wall law and Pd from the paper's section 4.6. Check against Table XI before citing.
+Run: converged in 18 cycles (change 9e-7), max Courant 0.61, volume balance in - out - stored = 0 to 1e-9 m3, 159 s on 2 cores.
+
+Relative RMS over the last cycle at the 12 sites (segment midpoints, sites named in the supplement README; no inference needed):
+
+| quantity | ours vs reference mean, median (range) | reference codes' own spread about their mean, median (range) |
+| --- | --- | --- |
+| pressure | 0.19% (0.11-0.49%) | 0.35% (0.23-0.98%) |
+| flow | 1.28% (0.51-2.71%) | 2.17% (0.51-5.33%) |
+
+At every site our error is at or below the six codes' own spread. Data issue found: the DCG flow file has spikes (right CCA max
+6540 ml/s vs 30.6 for the other five codes); a series is dropped at a site if it differs from the median of the other five codes by
+> 20% RMS (a check that does not use our solution). This drops DCG flow at all 12 sites and nothing else.
+Gate 0 solver verification now covers Boileau cases 1, 2, 5, 6 (case 3 and 4 need 3-D data / Table VII; not available).
