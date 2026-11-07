@@ -1,3 +1,5 @@
+> New collaborator or AI assistant: start with [`HANDOVER.md`](HANDOVER.md).
+
 # When do physics checks catch neural-surrogate failures? Circle of Willis hemodynamics under anatomical variation
 
 Neural surrogates for 1D blood flow are fast, but nothing tells you when they are wrong. This repository asks a narrow,
@@ -60,6 +62,6 @@ Boileau et al. 2015 benchmark data are third-party (paper supplement) and not re
 
 ## Status
 
-Work in progress toward a methods paper. Solver verification: analytic limits, mesh convergence, Boileau 2015 cases 1, 2, 5
-(case 2 within the six reference codes' own spread). Pending: Boileau case 4 and ADAN56, a second topology-shift domain.
+Work in progress toward a methods paper. Solver verification: analytic limits, mesh convergence, Boileau 2015 cases 1, 2, 5, 6
+(cases 2 and 6 within the six reference codes' own spread). Pending: Boileau cases 3 and 4, a second topology-shift domain.
 Figures: `python scripts/make_figures.py` -> `figures/`. Related work: `docs/related_work.md`.
