@@ -18,9 +18,10 @@ import numpy as np
 from data.cow_dataset import GEO, VESSELS, a0_of
 from physics.cow_network import inflow_waveform, inlet_mean_mL_s
 
-RHO, MU, SIGMA = 1050.0, 4.5e-3, 0.5
-DX_SOLVER = 2.0e-3
-KR = 8 * math.pi * MU / RHO
+_C = GEO["constants"]
+RHO, MU, SIGMA = float(_C["rho_kg_m3"]), float(_C["mu_mPa_s"]) * 1e-3, float(_C["sigma"])
+DX_SOLVER = float(GEO["constants"].get("dx_target_m", 2.0e-3))  # solver cell size used to build the dataset (config-driven)
+KR = float(_C.get("friction_scale", 1.0)) * 8 * math.pi * MU / RHO  # momentum friction coefficient of the dataset's solver
 NODES = GEO["topology"]["nodes"]
 
 
