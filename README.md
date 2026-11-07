@@ -44,7 +44,7 @@ itself (see related work in `docs/audit.md`), or results for pressure as strong 
 | `training/train_surrogate.py` | MLP and graph surrogates, optional physics loss or hard junction projection |
 | `models/graph_surrogate.py` | Vessel-graph message-passing surrogate (second architecture) |
 | `reliability/` | Signals S1-S6, AUROC / risk-coverage, cluster bootstrap, fallback policy, Goodhart decomposition |
-| `scripts/gate0/` | Solver verification: mesh study, timing, Boileau et al. 2015 benchmarks 1, 2, 5 |
+| `scripts/gate0/` | Solver verification: mesh study, timing, Boileau et al. 2015 benchmarks 1, 2, 5, 6 |
 | `tests/` | 36 tests plus 19 strict xfails that document defects of the legacy solver kept for the audit trail |
 | `docs/legacy_README.md`, `models/gpinn.py`, `data/generate_synthetic.py` | Legacy G-PINN prototype. Its solver failed verification (see audit); kept for history only |
 
