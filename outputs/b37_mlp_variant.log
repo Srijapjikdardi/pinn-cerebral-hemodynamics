@@ -1,0 +1,6 @@
+member 0 best val relL2 0.1346
+member 1 best val relL2 0.1329
+member 2 best val relL2 0.1265
+member 3 best val relL2 0.1312
+member 4 best val relL2 0.1319
+saved outputs/b37_mlp_variant.npz

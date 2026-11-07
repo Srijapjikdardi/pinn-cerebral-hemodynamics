@@ -23,7 +23,9 @@ from sklearn.metrics import roc_auc_score
 from data.cow_dataset import VESSELS, load
 from reliability.signals import KR, NODES, RHO, _fields
 
-DATA = "data/cow_v1.h5"
+import os
+
+DATA = os.environ.get("RELIAB_DATA", "data/cow_v1.h5")  # set to data/b37_v1.h5 with NETWORK_CONFIG for the 37-artery domain
 
 
 def decompose(pred, m):

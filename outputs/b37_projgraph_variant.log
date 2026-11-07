@@ -1,0 +1,6 @@
+member 0 best val relL2 0.0774
+member 1 best val relL2 0.0797
+member 2 best val relL2 0.0786
+member 3 best val relL2 0.0791
+member 4 best val relL2 0.0793
+saved outputs/b37_projgraph_variant.npz

@@ -1,0 +1,24 @@
+
+=== variant
+OOD err_Q graph / projected / MLP: 0.121 / 0.125 / 0.125 ; ID graph / MLP: 0.120 / 0.119 ; bad share {'graph': 0.08, 'proj': 0.07, 'mlp': 0.07}
+H1 S1 AUROC (graph) 0.78 [0.58, 0.93] -> PASS
+H2 projected S1 rounded 1e-7: 0.50 -> PASS
+H3 S7 median ratio 6.2x -> PASS
+H4 S7 AUROC unproj 0.73 proj 0.71 -> FAIL
+H5 projected S7 AUROC p90 0.71 (balanced 0.63; unprojected balanced 0.64) -> PASS
+H6 mean err_Q of kept cases, S1 gate vs random at 30%: 0.1144 vs 0.1212 -> PASS
+H7 graph < MLP OOD err_Q: 0.121 vs 0.125 -> PASS
+all signals AUROC graph: {'S1': 0.78, 'S2': 0.45, 'S3': 0.7, 'S4': 0.52, 'S5': 0.63, 'S6': 0.57}
+all signals AUROC mlp  : {'S1': 0.7, 'S2': 0.66, 'S3': 0.6, 'S4': 0.58, 'S5': 0.64, 'S6': 0.6}
+
+=== complexity
+OOD err_Q graph / projected / MLP: 0.326 / 0.370 / 0.470 ; ID graph / MLP: 0.157 / 0.149 ; bad share {'graph': 0.94, 'proj': 0.98, 'mlp': 0.97}
+H1 S1 AUROC (graph) 0.38 [0.18, 0.59] -> FAIL
+H2 projected S1 rounded 1e-7: 0.50 -> PASS
+H3 S7 median ratio 12.0x -> PASS
+H4 S7 AUROC unproj 0.31 proj 0.87 -> PASS
+H5 projected S7 AUROC p90 0.87 (balanced 0.59; unprojected balanced 0.47) -> PASS
+H6 mean err_Q of kept cases, S1 gate vs random at 30%: 0.3161 vs 0.3263 -> PASS
+H7 graph < MLP OOD err_Q: 0.326 vs 0.470 -> PASS
+all signals AUROC graph: {'S1': 0.38, 'S2': 0.29, 'S3': 0.38, 'S4': 0.85, 'S5': 0.39, 'S6': 0.56}
+all signals AUROC mlp  : {'S1': 0.9, 'S2': 0.51, 'S3': 0.7, 'S4': 0.97, 'S5': 0.74, 'S6': 0.51}

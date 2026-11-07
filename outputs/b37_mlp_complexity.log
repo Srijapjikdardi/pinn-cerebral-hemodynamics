@@ -1,0 +1,6 @@
+member 0 best val relL2 0.1572
+member 1 best val relL2 0.1566
+member 2 best val relL2 0.1599
+member 3 best val relL2 0.1605
+member 4 best val relL2 0.1599
+saved outputs/b37_mlp_complexity.npz
