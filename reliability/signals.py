@@ -16,7 +16,7 @@ import math
 import numpy as np
 
 from data.cow_dataset import GEO, VESSELS, a0_of
-from physics.cow_network import inflow_waveform
+from physics.cow_network import inflow_waveform, inlet_mean_mL_s
 
 RHO, MU, SIGMA = 1050.0, 4.5e-3, 0.5
 DX_SOLVER = 2.0e-3
@@ -90,16 +90,17 @@ def signals(pred, m):
         rq.append(np.sqrt((mom[:, sl] ** 2).mean()) / sQ)
     s3 = 0.5 * (np.mean(rm) + np.mean(rq))
     # S4
-    wt = inflow_waveform(400)
+    wt = inflow_waveform(400, GEO)
+    wn = len(wt)
     tt = (np.arange(nt) + 1) * dt  # solver recorded times; waveform phase unknown, compare phase-free via shape
     errs = []
-    for v in ("ICA_L", "ICA_R", "BA"):
+    for v in GEO["topology"]["inlets"]:
         if v in F:
             Q0 = F[v][1][:, 0]
-            target_mean = (GEO["inflow"]["BA_mean_mL_s"] if v == "BA" else GEO["inflow"]["ICA_mean_mL_s"]) * 1e-6
+            target_mean = inlet_mean_mL_s(GEO, v) * 1e-6
             target_mean *= m["inflow_scale"][v] * m.get("demand_fraction", 1.0)
             # the solver evaluates the waveform at absolute time; compare after removing the cyclic shift
-            w = target_mean * np.interp(np.linspace(0, 1, nt, endpoint=False), np.arange(400) / 400, wt, period=1.0)
+            w = target_mean * np.interp(np.linspace(0, 1, nt, endpoint=False), np.arange(wn) / wn, wt, period=1.0)
             best = min(np.abs(np.roll(w, k) - Q0).mean() for k in range(nt))
             errs.append(best / target_mean)
     return dict(S1_junction_mass=float(np.mean(s1)), S2_junction_pressure=float(np.mean(s2)),

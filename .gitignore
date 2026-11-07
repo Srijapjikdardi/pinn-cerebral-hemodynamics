@@ -6,3 +6,5 @@ data/boileau37/
 outputs/*_pred.npz
 data/adan56/
 for_me_only/
+configs/network_boileau37.yaml
+data/b37_*.h5

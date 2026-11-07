@@ -535,13 +535,15 @@ def build_network(vessels, nodes, inlets, outlets, rho=1050.0, mu=4.5e-3, sigma=
 
 
 def simulate_periodic(net, p_init, cfl=0.8, n_out=100, min_cycles=3, max_cycles=30, tol=1e-4,
-                      progress=None):
+                      progress=None, pc_init=None):
     """Run to a periodic state, then record one cycle of cell fields at n_out times.
 
     Returns dict with t, per-vessel (x, A, Q, P) arrays (n_out x ncell) and diagnostics
     (cycles, cycle_change, volume balance, max Courant, wall time)."""
     t_wall = time.perf_counter()
     net.init_uniform_pressure(p_init)
+    if pc_init is not None:  # pure-resistor terminals (huge R2*C) never relax: start the capacitor at the outlet pressure
+        net.Pc[:] = pc_init
     dt0 = net.stable_dt(cfl)
     steps_per_cycle = int(math.ceil(net.period / dt0 / n_out)) * n_out
     dt = net.period / steps_per_cycle

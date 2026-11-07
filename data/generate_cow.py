@@ -22,16 +22,24 @@ from physics.solver_1d import simulate_periodic  # noqa: E402
 
 NX, NT, DX = 21, 80, 2.0e-3
 RAD_SD, E_SD, INFLOW_SD, R_SD = 0.08, 0.12, 0.12, 0.12  # lognormal sigmas (assumed ranges, A)
-PERIOD_RANGE = (0.6, 1.0)
+_GEO = load_geometry()
+PERIOD_RANGE = tuple(_GEO["constants"].get("period_range_s", (0.6, 1.0)))
+DX = float(_GEO["constants"].get("dx_target_m", DX))
 # Mean outflow demand per terminal, mL/s (Alastruey 2007 Table 2, normal case). Inflow is scaled by the fraction of
 # demand whose terminals remain connected (A: variants that prune territory do not push full flow into fewer outlets).
 DEMAND = {"MCA": 1.73, "A2": 1.16, "P2": 0.90}
 
 
+def _demand_weights():
+    d = _GEO.get("demand")  # per-outlet weights in the network config
+    if d is not None:
+        return d
+    return {v: DEMAND[v.split("_")[0]] for v in _GEO["topology"]["outlets"]}  # CoW: Table 2 by territory
+
+
 def demand_fraction(vessels):
-    full = 2 * sum(DEMAND.values())
-    kept = sum(DEMAND[v.split("_")[0]] for v in vessels if v.split("_")[0] in DEMAND)
-    return kept / full
+    w = _demand_weights()
+    return sum(w[v] for v in vessels if v in w) / sum(w.values())
 
 
 def variants():
@@ -71,7 +79,8 @@ def run_sample(args):
     inflow = {k: v * frac for k, v in prm["inflow_scale"].items()}
     net, info = build_cow(prm["absent"], dx_target=DX, hypo=prm["r_scale"], E_scale=prm["E_scale"],
                           inflow_scale=inflow, R_scale=prm["R_scale"], period=prm["period"])
-    out = simulate_periodic(net, info["p_init"], n_out=NT, tol=1e-5, max_cycles=40)
+    out = simulate_periodic(net, info["p_init"], n_out=NT, tol=1e-5, max_cycles=_GEO["constants"].get("max_cycles", 40),
+                            pc_init=info["pc_init"])
     d = out["diagnostics"]
     fields = {}
     for n in info["vessels"]:
