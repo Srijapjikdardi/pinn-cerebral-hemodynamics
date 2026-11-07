@@ -610,3 +610,14 @@ At every site our error is at or below the six codes' own spread. Data issue fou
 6540 ml/s vs 30.6 for the other five codes); a series is dropped at a site if it differs from the median of the other five codes by
 > 20% RMS (a check that does not use our solution). This drops DCG flow at all 12 sites and nothing else.
 Gate 0 solver verification now covers Boileau cases 1, 2, 5, 6 (case 3 and 4 need 3-D data / Table VII; not available).
+
+## Update 2026-11-07 (session 3): second domain (pruned 37-artery network), pre-registered test
+
+Details and the hypothesis table are in `docs/preregistration_b37.md` (results section). Summary: the Goodhart mechanism replicates
+(projected S1 uninformative, S7 6-12x higher); the S1 detector claim does not transfer (graph `complexity` S1 0.38 [0.18, 0.59]);
+H1 and H4 fail, H2, H3, H5, H6, H7 hold. Topology shift is mild in `variant` (held-out err_Q 0.121 = in-distribution 0.120).
+
+Exploratory fit check (not pre-registered, single member): graph width 256, 300 epochs, `variant`: in-distribution err_Q 8.6% (was 12.0%
+with the CoW settings), area error 1.4% (was 1.9%), held-out 8.7% (was 12.1%). So the pre-registered surrogate underfits this domain
+partly; absolute accuracy remains limited (1000 samples, 124 k outputs). Detector results on this domain are for moderately accurate
+surrogates; a fully refit domain-2 ensemble (about 4 h on this machine) was not run.
